@@ -5,6 +5,7 @@
 #ifndef CONTEST_BEAUTYAGENT_HPP
 #define CONTEST_BEAUTYAGENT_HPP
 
+#include <thread>
 
 #include "MessageBroker.hpp"
 
@@ -28,6 +29,7 @@ private:
 
 	void prepare();
 
+	std::thread _puller;
 };
 
 

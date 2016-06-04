@@ -5,15 +5,18 @@
 #include "MessageBroker.hpp"
 
 #include <chrono>
+#include <thread>
 
 std::vector<int> MessageBroker::_targetAll = std::vector<int>();
 
 MessageBroker::MessageBroker(const int id, const int agentsCount)
-	: _id(id), _actualLamportClock(LamportClock(agentsCount))
+	: _id(id), _actualLamportClock(LamportClock(agentsCount)), _running(new bool)
 {
 	for (int i = 0; i < agentsCount; ++i)
 		if (i != id)
 			_targetAll.push_back(i);
+
+	*_running = true;
 }
 
 Message MessageBroker::wrapWithMessage(AgentMessage &agentMessage)
@@ -69,15 +72,21 @@ AgentMessage resolveMessage(const int type, const Payload& payload)
 
 void MessageBroker::pullMessages()
 {
-	_running = true;
 	MPI_Status status;
 
-	while (_running)
-	{
-		MPI_Probe(MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
+	printf("Broker %i starts receiving messages\n", _id);
 
-		if (!_running)
-			return;
+	while (*_running)
+	{
+		int isReady;
+		MPI_Iprobe(MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &isReady, &status);
+
+		if (!isReady)
+		{
+			//std::this_thread::sleep_for(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::duration<float> (100)));
+			//printf("No message\n");
+			continue;
+		}
 
 		int messageSize;
 		MPI_Get_count(&status, MPI_INT, &messageSize);
@@ -95,18 +104,18 @@ void MessageBroker::pullMessages()
 			messagesPool[messageType].query.push_back(resolveMessage(messageType, receivedMessage.getAgentMessageBody()));
 		}
 	}
+
+	printf("Broker %i stops receiving messages\n", _id);
 }
 
 void MessageBroker::stop()
 {
-	_running = false;
+	*_running = false;
 }
 
 MessageBroker::~MessageBroker()
 {
-	// poke our pullMessages thread
-	_running = false;
-	MPI_Send((const void *) (char)1, 1, MPI_BYTE, _id, 0, MPI_COMM_WORLD);
+	printf("Message broker %i fully stopped\n", _id);
 }
 
 void MessageBroker::query(AgentMessage &)
@@ -122,6 +131,7 @@ void MessageBroker::updateLamportClock(const LamportClock &lamportClock)
 		if (lamportClock[i] > _actualLamportClock[i])
 			_actualLamportClock[i] = lamportClock[i];
 }
+
 
 
 

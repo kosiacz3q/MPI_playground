@@ -18,12 +18,17 @@ BeautyAgent::BeautyAgent(const int id, const int managersCount)
 {
 	_managersCandidatesCount = new int[managersCount];
 
+	_puller= std::thread(&MessageBroker::pullMessages, &_broker);
+
 	printf("Beauty agent %i ready for action\n", id);
 }
 
 void BeautyAgent::run()
 {
 	prepare();
+
+	_broker.stop();
+	_puller.join();
 }
 
 BeautyAgent::~BeautyAgent()
@@ -40,8 +45,6 @@ void BeautyAgent::prepare()
 
 	auto participationMessage = ParticipationMessage(_id, _managersCandidatesCount[_id]);
 	_broker.send(participationMessage);
-
-
 }
 
 

@@ -8,7 +8,6 @@
 #include <mpi.h>
 #include <map>
 #include <condition_variable>
-#include <thread>
 
 #include "Messages.hpp"
 
@@ -28,6 +27,8 @@ public:
 	void pullMessages();
 
 	void stop();
+
+	void poke();
 
 private:
 
@@ -54,7 +55,7 @@ private:
 
 	std::map<int, MessageSource> messagesPool;
 
-	bool _running;
+	bool* _running;
 };
 
 
