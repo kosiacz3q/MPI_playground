@@ -46,7 +46,7 @@ ParticipationMessage::ParticipationMessage(Payload payload)
 }
 
 ParticipationMessage::ParticipationMessage(int managerId, int candidatesCount)
-	: AgentMessage(ParticipationMessageType)
+	: AgentMessage(TypeId)
 {
 	joinVectors(_payload, to_bytes(managerId));
 	joinVectors(_payload, to_bytes(candidatesCount));

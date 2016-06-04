@@ -57,7 +57,7 @@ public:
 
 	MessageType getType() { return _type; } const
 
-	Payload& getPayload() { return _payload; } const
+	Payload getPayload() { return _payload; } const
 
 	static MessageType getTypeFromPayload(const Payload& payload) { return payload[0]; }
 
@@ -84,7 +84,7 @@ public:
 	int getManagerId() { return _managerId; } const
 	int getCandidatesCount() { return _candidatesCount; } const
 
-	static constexpr int ParticipationMessageType = 43;
+	static constexpr int TypeId = 43;
 
 private:
 

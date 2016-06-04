@@ -18,6 +18,8 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/bin")
 
 set(SOURCE_FILES
         src/Messages.cpp
+        src/BeautyAgent.cpp
+        src/MessageBroker.cpp
         )
 
 add_executable(Contest ${SOURCE_FILES} src/main.cpp)

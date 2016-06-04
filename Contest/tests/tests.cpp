@@ -117,7 +117,7 @@ TEST_CASE( "participation message from payload", "[agent message]" )
 
 	auto participationMessage = ParticipationMessage(agentPayload);
 
-	REQUIRE(participationMessage.getType() == ParticipationMessage::ParticipationMessageType);
+	REQUIRE(participationMessage.getType() == ParticipationMessage::TypeId);
 	REQUIRE(participationMessage.getCandidatesCount() == 3);
 	REQUIRE(participationMessage.getManagerId() == 1073741874);
 }
