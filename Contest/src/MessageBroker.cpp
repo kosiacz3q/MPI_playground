@@ -74,25 +74,30 @@ void MessageBroker::pullMessages()
 {
 	MPI_Status status;
 
-	printf("Broker %i starts receiving messages\n", _id);
+	printf("[Broker %i] starts receiving messages\n", _id);
+	int isReady;
 
 	while (*_running)
 	{
-		int isReady;
+
 		MPI_Iprobe(MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &isReady, &status);
 
 		if (!isReady)
 		{
-			//std::this_thread::sleep_for(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::duration<float> (100)));
+			std::this_thread::sleep_for(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::duration<float> (100)));
 			//printf("No message\n");
 			continue;
 		}
 
+		printf("[Broker %i] received message\n", _id);
+
 		int messageSize;
-		MPI_Get_count(&status, MPI_INT, &messageSize);
+		MPI_Get_count(&status, MPI_BYTE, &messageSize);
+
+		printf("[Broker %i] message count %i\n", _id, messageSize);
 
 		Payload buffer(messageSize);
-		MPI_Recv(&buffer[0], messageSize, MPI_INT, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+		MPI_Recv(&buffer[0], messageSize, MPI_BYTE, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 
 		auto receivedMessage = Message(buffer);
 
@@ -105,7 +110,7 @@ void MessageBroker::pullMessages()
 		}
 	}
 
-	printf("Broker %i stops receiving messages\n", _id);
+	printf("[Broker %i] stops receiving messages\n", _id);
 }
 
 void MessageBroker::stop()
@@ -115,7 +120,7 @@ void MessageBroker::stop()
 
 MessageBroker::~MessageBroker()
 {
-	printf("Message broker %i fully stopped\n", _id);
+	printf("[Broker %i] destroyed\n", _id);
 }
 
 void MessageBroker::query(AgentMessage &)

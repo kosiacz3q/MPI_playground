@@ -28,8 +28,6 @@ public:
 
 	void stop();
 
-	void poke();
-
 private:
 
 	void query(AgentMessage& agentMessage);

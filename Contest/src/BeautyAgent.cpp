@@ -20,7 +20,7 @@ BeautyAgent::BeautyAgent(const int id, const int managersCount)
 
 	_puller= std::thread(&MessageBroker::pullMessages, &_broker);
 
-	printf("Beauty agent %i ready for action\n", id);
+	printf("[Agent %i] ready for action\n", id);
 }
 
 void BeautyAgent::run()
@@ -34,7 +34,7 @@ void BeautyAgent::run()
 BeautyAgent::~BeautyAgent()
 {
 	delete [] _managersCandidatesCount;
-	printf("Beauty agent %i is melting\n", _id);
+	printf("[Agent %i] is melting\n", _id);
 }
 
 void BeautyAgent::prepare()
