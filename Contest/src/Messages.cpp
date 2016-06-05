@@ -84,14 +84,12 @@ ReserveSaloon::ReserveSaloon(Payload payload)
 		: AgentMessage(ReserveSaloon::TypeId, payload)
 {
 	from_bytes(_managerId, _payload.begin() + 1);
-	from_bytes(_spotsCount, _payload.begin() + 5);
 }
 
-ReserveSaloon::ReserveSaloon(const int managerId, int spotsCount)
-		: AgentMessage(ReserveSaloon::TypeId), _managerId(managerId), _spotsCount(spotsCount)
+ReserveSaloon::ReserveSaloon(const int managerId)
+		: AgentMessage(ReserveSaloon::TypeId), _managerId(managerId)
 {
 	joinVectors(_payload, to_bytes(managerId));
-	joinVectors(_payload, to_bytes(spotsCount));
 }
 
 
@@ -99,14 +97,38 @@ FreeSaloon::FreeSaloon(Payload payload)
 	: AgentMessage(FreeSaloon::TypeId, payload)
 {
 	from_bytes(_managerId, _payload.begin() + 1);
-	from_bytes(_spotsCount, _payload.begin() + 5);
 }
 
-FreeSaloon::FreeSaloon(const int managerId, int spotsCount)
-	: AgentMessage(FreeSaloon::TypeId), _managerId(managerId), _spotsCount(spotsCount)
+FreeSaloon::FreeSaloon(const int managerId)
+	: AgentMessage(FreeSaloon::TypeId), _managerId(managerId)
 {
 	joinVectors(_payload, to_bytes(managerId));
-	joinVectors(_payload, to_bytes(spotsCount));
+}
+
+
+PassMeRequest::PassMeRequest(Payload payload)
+		: AgentMessage(PassMeRequest::TypeId, payload)
+{
+	from_bytes(_managerId, _payload.begin() + 1);
+}
+
+PassMeRequest::PassMeRequest(const int managerId)
+		: AgentMessage(PassMeRequest::TypeId), _managerId(managerId)
+{
+	joinVectors(_payload, to_bytes(managerId));
+}
+
+
+PassMeDecision::PassMeDecision(Payload payload)
+		: AgentMessage(PassMeDecision::TypeId, payload)
+{
+	from_bytes(_decision, _payload.begin() + 1);
+}
+
+PassMeDecision::PassMeDecision(const int decision)
+		: AgentMessage(PassMeDecision::TypeId), _decision(decision)
+{
+	joinVectors(_payload, to_bytes(decision));
 }
 
 

@@ -33,7 +33,8 @@ BeautyAgent::BeautyAgent(const int id, const int managersCount, const int doctor
 	for (int i = 0; i < managersCount; ++i)
 		_queueToSaloon[i] = std::numeric_limits<int>::max();
 
-	_puller= std::thread(&MessageBroker::pullMessages, &_broker);
+	_puller = std::thread(&MessageBroker::pullMessages, &_broker);
+	_passer = std::thread(&BeautyAgent::passerLoop, this);
 
 	printf("[Agent %i] ready for action\n", id);
 }
@@ -50,8 +51,10 @@ void BeautyAgent::run()
 
 	waitForAllManagersToBeReady();
 
+	_running = false;
 	_broker.stop();
 	_puller.join();
+	_passer.join();
 }
 
 BeautyAgent::~BeautyAgent()
@@ -104,7 +107,10 @@ void BeautyAgent::checkInDoctor()
 	int doctorsQueue[_doctorsCount];
 	std::vector<int> targets;
 
-	while(_managersCandidatesCount[_id])
+	int managerCandidatesPendingToDoctor[_managersCount];
+	memcpy(managerCandidatesPendingToDoctor, _managersCandidatesCount, _managersCount * 4);
+
+	while(managerCandidatesPendingToDoctor[_id])
 	{
 		//clear queue
 		for (int i = 0; i < _doctorsCount; ++i)
@@ -113,7 +119,7 @@ void BeautyAgent::checkInDoctor()
 		// query other managers who have non checked candidates
 		targets.clear();
 		for (int i = 0; i < _managersCount; ++i)
-			if (_managersCandidatesCount[i] > 0 && i != _id)
+			if (managerCandidatesPendingToDoctor[i] > 0 && i != _id)
 				targets.push_back(i);
 
 		// send message with choosen doctor
@@ -153,13 +159,14 @@ void BeautyAgent::checkInDoctor()
 		// perform doctor check
 		for (const int managerInDoctor : doctorsQueue)
 			if (managerInDoctor != std::numeric_limits<int>::max())
-				if (--_managersCandidatesCount[managerInDoctor] == 0)
+				if (--managerCandidatesPendingToDoctor[managerInDoctor] == 0)
 				{
-					//TODO add some sleep
 					_queueToSaloon[managerInDoctor] = _minInDoctorQueue++;
+					std::unique_lock<std::mutex> ll(_passingLock);
+					_doctorComplete = true;
 				}
 
-		printVector("[Agent " + std::to_string(_id) + "] current state turn [" + std::to_string(turn++) + "]", _managersCandidatesCount, _managersCandidatesCount + _managersCount - 1);
+		printVector("[Agent " + std::to_string(_id) + "] current state turn [" + std::to_string(turn++) + "]", managerCandidatesPendingToDoctor, managerCandidatesPendingToDoctor + _managersCount - 1);
 	}
 }
 
@@ -188,21 +195,40 @@ void BeautyAgent::checkInSaloon()
 			if (sender != earlierInQueue.end())
 				earlierInQueue.erase(sender);
 
-			_saloonCapacity -= reservation->getSpotsCount();
+			_saloonCapacity -= _managersCandidatesCount[reservation->getManagerId()];
 		}
 
 		while (_broker.isAvailable<FreeSaloon>())
 		{
 			auto reservation = std::dynamic_pointer_cast<FreeSaloon>(_broker.receive<FreeSaloon>());
-			_saloonCapacity += reservation->getSpotsCount();
+			_saloonCapacity += _managersCandidatesCount[reservation->getManagerId()];
 		}
 
-		if (_saloonCapacity >= _candidatesCount && earlierInQueue.empty())
+
+		for (const int earlier : earlierInQueue)
+		{
+			auto passMeRequest = PassMeRequest(_id);
+			_broker.send(passMeRequest, { earlier });
+			auto request = std::dynamic_pointer_cast<PassMeDecision>(_broker.receive<PassMeDecision>());
+
+			if (request->getDecision() == 2)
+			{
+				_saloonCapacity -= _managersCandidatesCount[earlier];
+			}
+			else
+			{
+				afterInQueue.push_back(earlier);
+			}
+		}
+
+		earlierInQueue.clear();
+
+		if (_saloonCapacity >= _candidatesCount)
 		{
 			_saloonCapacity -= _candidatesCount;
 
 			printf("[Agent %i] reserving saloon [%i\\%i]\n", _id, _saloonCapacity, maxCapacity);
-			auto reservation = ReserveSaloon(_id, _candidatesCount);
+			auto reservation = ReserveSaloon(_id);
 
 			_broker.send(reservation, afterInQueue);
 
@@ -218,7 +244,7 @@ void BeautyAgent::checkInSaloon()
 
 	_saloonCapacity += _candidatesCount;
 	printf("[Agent %i] freeing saloon [%i\\%i]\n", _id, _saloonCapacity, maxCapacity);
-	auto freeSaloon = FreeSaloon(_id, _candidatesCount);
+	auto freeSaloon = FreeSaloon(_id);
 	_broker.send(freeSaloon, afterInQueue);
 }
 
@@ -226,17 +252,23 @@ void BeautyAgent::passerLoop()
 {
 	while (_running)
 	{
-		if (_broker.isAvailable<FreeSaloon>())
+		if (_broker.isAvailable<PassMeRequest>())
 		{
+			std::unique_lock<std::mutex> ll(_passingLock);
 
+			auto request = std::dynamic_pointer_cast<PassMeRequest>(_broker.receive<PassMeRequest>());
+
+			int decision = _doctorComplete ? 1 : 2;
+			auto decisionMessage = PassMeDecision(decision);
+
+			_broker.send(decisionMessage, {request->getManagerId()});
+
+			_queueToSaloon[request->getManagerId()] = 0;
 		}
 		else
 		{
 			std::this_thread::sleep_for(std::chrono::milliseconds(100));
 		}
-
-		auto reservation = std::dynamic_pointer_cast<FreeSaloon>(_broker.receive<FreeSaloon>());
-		_saloonCapacity += reservation->getSpotsCount();
 	}
 }
 

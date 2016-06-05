@@ -137,10 +137,9 @@ class ReserveSaloon : public AgentMessage
 public:
 
 	ReserveSaloon(Payload payload);
-	ReserveSaloon(const int managerId, int spotsCount);
+	ReserveSaloon(const int managerId);
 
 	int getManagerId() { return _managerId; } const
-	int getSpotsCount() { return  _spotsCount; } const
 
 	static constexpr int TypeId = 4;
 	static int getTypeId() {return 4; }
@@ -148,7 +147,6 @@ public:
 private:
 
 	int _managerId;
-	int _spotsCount;
 };
 //======================================================================================================================
 
@@ -157,10 +155,9 @@ class FreeSaloon : public AgentMessage
 public:
 
 	FreeSaloon(Payload payload);
-	FreeSaloon(const int managerId, int spotsCount);
+	FreeSaloon(const int managerId);
 
 	int getManagerId() { return _managerId; } const
-	int getSpotsCount() { return  _spotsCount; } const
 
 	static constexpr int TypeId = 5;
 	static int getTypeId() {return 5; }
@@ -168,7 +165,43 @@ public:
 private:
 
 	int _managerId;
-	int _spotsCount;
 };
 //======================================================================================================================
+
+class PassMeRequest : public AgentMessage
+{
+public:
+
+	PassMeRequest(Payload payload);
+	PassMeRequest(const int managerId);
+
+	int getManagerId() { return _managerId; } const
+
+	static constexpr int TypeId = 6;
+	static int getTypeId() {return 6; }
+
+private:
+
+	int _managerId;
+};
+//======================================================================================================================
+
+class PassMeDecision : public AgentMessage
+{
+public:
+
+	PassMeDecision(Payload payload);
+	PassMeDecision(const int decision);
+
+	int getDecision() { return  _decision; } const
+
+	static constexpr int TypeId = 7;
+	static int getTypeId() {return 7; }
+
+private:
+
+	int _decision;
+};
+//======================================================================================================================
+
 #endif //CONTEST_MESSAGE_HPP

@@ -70,6 +70,12 @@ AgentMessagePtr resolveMessage(const int type, const Payload& payload, int id)
 
 		case FreeSaloon::TypeId:
 			return std::make_shared<FreeSaloon>(payload);
+
+		case PassMeDecision::TypeId:
+			return std::make_shared<PassMeDecision>(payload);
+
+		case PassMeRequest::TypeId:
+			return std::make_shared<PassMeRequest>(payload);
 	}
 
 	printVector(payload);

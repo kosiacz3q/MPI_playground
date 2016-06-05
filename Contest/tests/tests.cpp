@@ -207,12 +207,11 @@ TEST_CASE( "send candidate to docotr from payload full zero feed", "[agent messa
 
 TEST_CASE( "reserve saloon to payload", "[agent message]" )
 {
-	auto reserveSaloon = ReserveSaloon(1, 2);
+	auto reserveSaloon = ReserveSaloon(1);
 
 	const auto expected = std::vector<char> {
 			4,
 			1, 0, 0, 0,
-			2, 0, 0, 0
 	};
 
 	REQUIRE(reserveSaloon.getPayload() == expected);
@@ -223,24 +222,21 @@ TEST_CASE( "reserve saloon  from payload", "[agent message]" )
 	const auto feed = std::vector<char> {
 			4,
 			1, 0, 0, 0,
-			2, 0, 0, 0
 	};
 
 	auto reserveSaloon = ReserveSaloon(feed);
 
 	REQUIRE(reserveSaloon.getType() == 4);
-	REQUIRE(reserveSaloon.getSpotsCount() == 2);
 	REQUIRE(reserveSaloon.getManagerId() == 1);
 }
 
 TEST_CASE( "free saloon to payload", "[agent message]" )
 {
-	auto freeSaloon = FreeSaloon(1, 2);
+	auto freeSaloon = FreeSaloon(1);
 
 	const auto expected = std::vector<char> {
 			5,
-			1, 0, 0, 0,
-			2, 0, 0, 0
+			1, 0, 0, 0
 	};
 
 	REQUIRE(freeSaloon.getPayload() == expected);
@@ -250,15 +246,63 @@ TEST_CASE( "free saloon  from payload", "[agent message]" )
 {
 	const auto feed = std::vector<char> {
 			5,
-			1, 0, 0, 0,
-			2, 0, 0, 0
+			1, 0, 0, 0
 	};
 
 	auto freeSaloon = FreeSaloon(feed);
 
 	REQUIRE(freeSaloon.getType() == 5);
-	REQUIRE(freeSaloon.getSpotsCount() == 2);
 	REQUIRE(freeSaloon.getManagerId() == 1);
+}
+
+TEST_CASE( "pass me request to payload", "[agent message]" )
+{
+	auto passMeRequest = PassMeRequest(1);
+
+	const auto expected = std::vector<char> {
+			6,
+			1, 0, 0, 0
+	};
+
+	REQUIRE(passMeRequest.getPayload() == expected);
+}
+
+TEST_CASE( "pass me request from payload", "[agent message]" )
+{
+	const auto feed = std::vector<char> {
+			6,
+			1, 0, 0, 0
+	};
+
+	auto passMeRequest = PassMeRequest(feed);
+
+	REQUIRE(passMeRequest.getType() == 6);
+	REQUIRE(passMeRequest.getManagerId() == 1);
+}
+
+TEST_CASE( "pass me decision to payload", "[agent message]" )
+{
+	auto passMeDecision = PassMeDecision(2);
+
+	const auto expected = std::vector<char> {
+			7,
+			2, 0, 0, 0
+	};
+
+	REQUIRE(passMeDecision.getPayload() == expected);
+}
+
+TEST_CASE( "pass me decision from payload", "[agent message]" )
+{
+	const auto feed = std::vector<char> {
+			7,
+			2, 0, 0, 0
+	};
+
+	auto passMeDecision = PassMeDecision(feed);
+
+	REQUIRE(passMeDecision.getType() == 7);
+	REQUIRE(passMeDecision.getDecision() == 2);
 }
 
 TEST_CASE( "Wrap and unwrap participation", "[wrapping]" )

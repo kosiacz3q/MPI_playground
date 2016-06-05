@@ -40,6 +40,7 @@ private:
 
 	int _candidatesCount;
 
+	std::mutex _passingLock;
 	void passerLoop();
 
 	void prepare();
