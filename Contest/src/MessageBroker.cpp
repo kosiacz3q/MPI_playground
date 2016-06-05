@@ -59,7 +59,7 @@ AgentMessagePtr resolveMessage(const int type, const Payload& payload, int id)
 			return std::make_shared<AgentReadyToContestMessage>(payload);
 	}
 
-	printPayload(payload);
+	printVector(payload);
 	std::this_thread::sleep_for(std::chrono::milliseconds(100));
 	throw "uknown message type";
 }

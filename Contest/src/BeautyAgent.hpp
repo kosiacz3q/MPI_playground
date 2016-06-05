@@ -29,7 +29,6 @@ private:
 
 	void prepare();
 
-
 	void waitForAllManagersToBeReady();
 
 	std::thread _puller;

@@ -28,17 +28,31 @@ void joinVectors(std::vector<T>& target, std::vector<T> source)
 }
 
 template <typename T>
-void printPayload(const std::vector<T>& payload)
+void printVector(const std::vector<T>& vector)
 {
 	std::stringstream result;
 	result << "[";
 
-	for (const T c : payload)
+	for (const T c : vector)
 		result << (c + 1) << ", ";
 
 	result << "]";
 
 	printf("Payload = %s\n", result.str().c_str());
+}
+
+template <typename T>
+void printVector(std::string prefix, const T* start, const T* end)
+{
+	std::stringstream result;
+	result << prefix << "[";
+
+	for (; start <= end; ++start)
+		result << (*start) << ", ";
+
+	result << "]";
+
+	printf("%s\n", result.str().c_str());
 }
 
 #endif
