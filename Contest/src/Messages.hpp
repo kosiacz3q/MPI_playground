@@ -131,4 +131,44 @@ private:
 	int _doctorId;
 };
 //======================================================================================================================
+
+class ReserveSaloon : public AgentMessage
+{
+public:
+
+	ReserveSaloon(Payload payload);
+	ReserveSaloon(const int managerId, int spotsCount);
+
+	int getManagerId() { return _managerId; } const
+	int getSpotsCount() { return  _spotsCount; } const
+
+	static constexpr int TypeId = 4;
+	static int getTypeId() {return 4; }
+
+private:
+
+	int _managerId;
+	int _spotsCount;
+};
+//======================================================================================================================
+
+class FreeSaloon : public AgentMessage
+{
+public:
+
+	FreeSaloon(Payload payload);
+	FreeSaloon(const int managerId, int spotsCount);
+
+	int getManagerId() { return _managerId; } const
+	int getSpotsCount() { return  _spotsCount; } const
+
+	static constexpr int TypeId = 5;
+	static int getTypeId() {return 5; }
+
+private:
+
+	int _managerId;
+	int _spotsCount;
+};
+//======================================================================================================================
 #endif //CONTEST_MESSAGE_HPP

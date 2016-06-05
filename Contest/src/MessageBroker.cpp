@@ -25,6 +25,8 @@ MessageBroker::MessageBroker(const int id, const int agentsCount)
 	messagesPool->insert({ 1, MessageSource() });
 	messagesPool->insert({ 2, MessageSource() });
 	messagesPool->insert({ 3, MessageSource() });
+	messagesPool->insert({ 4, MessageSource() });
+	messagesPool->insert({ 5, MessageSource() });
 }
 
 Message MessageBroker::wrapWithMessage(AgentMessage &agentMessage)
@@ -62,10 +64,16 @@ AgentMessagePtr resolveMessage(const int type, const Payload& payload, int id)
 
 		case SendToDoctorMessage::TypeId:
 			return std::make_shared<SendToDoctorMessage>(payload);
+
+		case ReserveSaloon::TypeId:
+			return std::make_shared<ReserveSaloon>(payload);
+
+		case FreeSaloon::TypeId:
+			return std::make_shared<FreeSaloon>(payload);
 	}
 
 	printVector(payload);
-	//std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
 	throw std::runtime_error(std::to_string(type));
 }
 

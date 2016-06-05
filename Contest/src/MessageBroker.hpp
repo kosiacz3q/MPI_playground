@@ -52,6 +52,12 @@ public:
 		}
 	}
 
+	template<typename T>
+	bool isAvailable()
+	{
+		return !(*messagesPool)[T::getTypeId()].query.empty();
+	}
+
 	void retract(AgentMessagePtr agentMessage);
 
 	void pullMessages();

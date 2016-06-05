@@ -80,4 +80,34 @@ SendToDoctorMessage::SendToDoctorMessage(const int managerId, const int doctorId
 }
 
 
+ReserveSaloon::ReserveSaloon(Payload payload)
+		: AgentMessage(ReserveSaloon::TypeId, payload)
+{
+	from_bytes(_managerId, _payload.begin() + 1);
+	from_bytes(_spotsCount, _payload.begin() + 5);
+}
+
+ReserveSaloon::ReserveSaloon(const int managerId, int spotsCount)
+		: AgentMessage(ReserveSaloon::TypeId), _managerId(managerId), _spotsCount(spotsCount)
+{
+	joinVectors(_payload, to_bytes(managerId));
+	joinVectors(_payload, to_bytes(spotsCount));
+}
+
+
+FreeSaloon::FreeSaloon(Payload payload)
+	: AgentMessage(FreeSaloon::TypeId, payload)
+{
+	from_bytes(_managerId, _payload.begin() + 1);
+	from_bytes(_spotsCount, _payload.begin() + 5);
+}
+
+FreeSaloon::FreeSaloon(const int managerId, int spotsCount)
+	: AgentMessage(FreeSaloon::TypeId), _managerId(managerId), _spotsCount(spotsCount)
+{
+	joinVectors(_payload, to_bytes(managerId));
+	joinVectors(_payload, to_bytes(spotsCount));
+}
+
+
 

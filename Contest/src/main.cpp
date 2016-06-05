@@ -24,7 +24,7 @@ int main(int argc, char **argv)
 
 	Message::SetLamportClockSize(agentsCount);
 
-	BeautyAgent ba(agentId, agentsCount, 1, BeautyAgent::MaxCandidatesCount);
+	BeautyAgent ba(agentId, agentsCount, 5, BeautyAgent::MaxCandidatesCount);
 
 	ba.run();
 

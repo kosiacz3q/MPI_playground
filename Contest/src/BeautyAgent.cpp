@@ -23,7 +23,9 @@ BeautyAgent::BeautyAgent(const int id, const int managersCount, const int doctor
 	 _managersCount(managersCount),
 	 _doctorsCount(doctorsCount),
 	 _minInDoctorQueue(0),
-	 _saloonCapacity(saloonCapacity)
+	 _saloonCapacity(saloonCapacity),
+	 _doctorComplete(false),
+	 _running(true)
 {
 	_managersCandidatesCount = new int[managersCount];
 	_queueToSaloon = new int[managersCount];
@@ -44,6 +46,8 @@ void BeautyAgent::run()
 
 	printf("[Agent %i] saloon ticket is %i\n", _id, _queueToSaloon[_id]);
 
+	checkInSaloon();
+
 	waitForAllManagersToBeReady();
 
 	_broker.stop();
@@ -62,7 +66,7 @@ void BeautyAgent::prepare()
 {
 	std::srand((unsigned int) (std::time(0) + _id));
 
-	_managersCandidatesCount[_id] = std::rand() % MaxCandidatesCount + 1;
+	_managersCandidatesCount[_id] = _candidatesCount = std::rand() % MaxCandidatesCount + 1;
 
 	printf("[Agent %i] choose to start with %i candidates\n", _id, _managersCandidatesCount[_id]);
 
@@ -158,3 +162,84 @@ void BeautyAgent::checkInDoctor()
 		printVector("[Agent " + std::to_string(_id) + "] current state turn [" + std::to_string(turn++) + "]", _managersCandidatesCount, _managersCandidatesCount + _managersCount - 1);
 	}
 }
+
+void BeautyAgent::checkInSaloon()
+{
+	std::vector<int> earlierInQueue;
+	std::vector<int> afterInQueue;
+
+	int maxCapacity = _saloonCapacity;
+
+	for (int i = 0; i < _managersCount; ++i)
+		if (_queueToSaloon[i] < _queueToSaloon[_id])
+			earlierInQueue.push_back(i);
+		else if (i != _id)
+			afterInQueue.push_back(i);
+
+	printf("[Agent %i] waiting for saloon\n", _id);
+
+	while(true)
+	{
+		while (_broker.isAvailable<ReserveSaloon>())
+		{
+			auto reservation = std::dynamic_pointer_cast<ReserveSaloon>(_broker.receive<ReserveSaloon>());
+
+			auto sender = std::find(earlierInQueue.begin(), earlierInQueue.end(), reservation->getManagerId());
+			if (sender != earlierInQueue.end())
+				earlierInQueue.erase(sender);
+
+			_saloonCapacity -= reservation->getSpotsCount();
+		}
+
+		while (_broker.isAvailable<FreeSaloon>())
+		{
+			auto reservation = std::dynamic_pointer_cast<FreeSaloon>(_broker.receive<FreeSaloon>());
+			_saloonCapacity += reservation->getSpotsCount();
+		}
+
+		if (_saloonCapacity >= _candidatesCount && earlierInQueue.empty())
+		{
+			_saloonCapacity -= _candidatesCount;
+
+			printf("[Agent %i] reserving saloon [%i\\%i]\n", _id, _saloonCapacity, maxCapacity);
+			auto reservation = ReserveSaloon(_id, _candidatesCount);
+
+			_broker.send(reservation, afterInQueue);
+
+			break;
+		}
+		else
+		{
+			std::this_thread::sleep_for(std::chrono::milliseconds(100));
+		}
+	}
+
+	std::this_thread::sleep_for(std::chrono::milliseconds(std::rand() % 2000 + 300));
+
+	_saloonCapacity += _candidatesCount;
+	printf("[Agent %i] freeing saloon [%i\\%i]\n", _id, _saloonCapacity, maxCapacity);
+	auto freeSaloon = FreeSaloon(_id, _candidatesCount);
+	_broker.send(freeSaloon, afterInQueue);
+}
+
+void BeautyAgent::passerLoop()
+{
+	while (_running)
+	{
+		if (_broker.isAvailable<FreeSaloon>())
+		{
+
+		}
+		else
+		{
+			std::this_thread::sleep_for(std::chrono::milliseconds(100));
+		}
+
+		auto reservation = std::dynamic_pointer_cast<FreeSaloon>(_broker.receive<FreeSaloon>());
+		_saloonCapacity += reservation->getSpotsCount();
+	}
+}
+
+
+
+

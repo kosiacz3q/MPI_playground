@@ -29,14 +29,24 @@ private:
 	int _doctorsCount;
 	int _minInDoctorQueue;
 	int _saloonCapacity;
+	bool _doctorComplete;
+	bool _running;
 
 	int* _managersCandidatesCount;
 	int* _queueToSaloon;
+
 	std::thread _puller;
+	std::thread _passer;
+
+	int _candidatesCount;
+
+	void passerLoop();
 
 	void prepare();
 
 	void checkInDoctor();
+
+	void checkInSaloon();
 
 	void waitForAllManagersToBeReady();
 };
