@@ -135,7 +135,7 @@ TEST_CASE( "payload from participation message", "[agent message]" )
 	REQUIRE(participationMessage.getPayload() == expected);
 }
 
-TEST_CASE( "agent read for contest to payload", "[agent message]" )
+TEST_CASE( "agent ready for contest to payload", "[agent message]" )
 {
 	auto agentReadyForContestMessage = AgentReadyToContestMessage();
 
@@ -146,7 +146,7 @@ TEST_CASE( "agent read for contest to payload", "[agent message]" )
 	REQUIRE(agentReadyForContestMessage.getPayload() == expected);
 }
 
-TEST_CASE( "agent read for contest from payload", "[agent message]" )
+TEST_CASE( "agent ready for contest from payload", "[agent message]" )
 {
 	const auto feed = std::vector<char> {
 			2
@@ -157,6 +157,33 @@ TEST_CASE( "agent read for contest from payload", "[agent message]" )
 	REQUIRE(agentReadyForContestMessage.getType() == 2);
 }
 
+TEST_CASE( "send candidate to docotr to payload", "[agent message]" )
+{
+	auto sendCandidateToDoctor = SendToDoctorMessage(1, 1);
+
+	const auto expected = std::vector<char> {
+			3,
+			1, 0, 0, 0,
+			1, 0, 0, 0
+	};
+
+	REQUIRE(sendCandidateToDoctor.getPayload() == expected);
+}
+
+TEST_CASE( "send candidate to docotr from payload", "[agent message]" )
+{
+	const auto feed = std::vector<char> {
+			3,
+			2, 0, 0, 0,
+			1, 0, 0, 0
+	};
+
+	auto sendCandidateToDoctor = SendToDoctorMessage(feed);
+
+	REQUIRE(sendCandidateToDoctor.getType() == 3);
+	REQUIRE(sendCandidateToDoctor.getDoctorId() == 1);
+	REQUIRE(sendCandidateToDoctor.getManagerId() == 2);
+}
 
 TEST_CASE( "Wrap and unwrap participation", "[wrapping]" )
 {

@@ -13,7 +13,7 @@ class BeautyAgent
 {
 public:
 
-	BeautyAgent(const int id, const int managersCount);
+	BeautyAgent(const int id, const int managersCount, const int doctorsCount, const int saloonCapacity);
 
 	virtual ~BeautyAgent();
 
@@ -23,17 +23,26 @@ public:
 
 private:
 
+
+
 	int _id;
 	int* _managersCandidatesCount;
+	int* _queueToSaloon;
+
 	MessageBroker _broker;
 
 	void prepare();
+
+	void checkInDoctor();
 
 	void waitForAllManagersToBeReady();
 
 	std::thread _puller;
 
 	int _managersCount;
+	int _doctorsCount;
+	int _minInDoctorQueue;
+	int _saloonCapacity;
 };
 
 

@@ -7,6 +7,7 @@
 #include <chrono>
 #include <thread>
 #include <utils.h>
+#include <stdexcept>
 
 std::vector<int> MessageBroker::_targetAll = std::vector<int>();
 
@@ -23,6 +24,7 @@ MessageBroker::MessageBroker(const int id, const int agentsCount)
 
 	messagesPool->insert({ 1, MessageSource() });
 	messagesPool->insert({ 2, MessageSource() });
+	messagesPool->insert({ 3, MessageSource() });
 }
 
 Message MessageBroker::wrapWithMessage(AgentMessage &agentMessage)
@@ -57,11 +59,14 @@ AgentMessagePtr resolveMessage(const int type, const Payload& payload, int id)
 
 		case AgentReadyToContestMessage::TypeId:
 			return std::make_shared<AgentReadyToContestMessage>(payload);
+
+		case SendToDoctorMessage::TypeId:
+			return std::make_shared<SendToDoctorMessage>(payload);
 	}
 
 	printVector(payload);
-	std::this_thread::sleep_for(std::chrono::milliseconds(100));
-	throw "uknown message type";
+	//std::this_thread::sleep_for(std::chrono::milliseconds(100));
+	throw std::runtime_error(std::to_string(type));
 }
 
 void MessageBroker::pullMessages()

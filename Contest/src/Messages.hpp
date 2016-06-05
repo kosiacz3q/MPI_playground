@@ -112,4 +112,23 @@ public:
 };
 //======================================================================================================================
 
+class SendToDoctorMessage : public AgentMessage
+{
+public:
+
+	SendToDoctorMessage(Payload payload);
+	SendToDoctorMessage(const int managerId, int doctorId);
+
+	int getManagerId() { return _managerId; } const
+	int getDoctorId() { return  _doctorId; } const
+
+	static constexpr int TypeId = 3;
+	static int getTypeId() {return 3; }
+
+private:
+
+	int _managerId;
+	int _doctorId;
+};
+//======================================================================================================================
 #endif //CONTEST_MESSAGE_HPP

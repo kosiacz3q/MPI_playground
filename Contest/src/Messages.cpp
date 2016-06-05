@@ -38,14 +38,14 @@ Message::Message(const LamportClock& lamportClock, const Payload& agentMessagePa
 }
 
 ParticipationMessage::ParticipationMessage(Payload payload)
-	: AgentMessage(1, payload)
+	: AgentMessage(ParticipationMessage::TypeId, payload)
 {
 	from_bytes(_managerId, _payload.begin() + 1);
 	from_bytes(_candidatesCount, _payload.begin() + 5);
 }
 
 ParticipationMessage::ParticipationMessage(int managerId, int candidatesCount)
-	: AgentMessage(1)
+	: AgentMessage(ParticipationMessage::TypeId), _managerId(managerId), _candidatesCount(candidatesCount)
 {
 	joinVectors(_payload, to_bytes(managerId));
 	joinVectors(_payload, to_bytes(candidatesCount));
@@ -53,15 +53,30 @@ ParticipationMessage::ParticipationMessage(int managerId, int candidatesCount)
 
 
 AgentReadyToContestMessage::AgentReadyToContestMessage(Payload payload)
-	: AgentMessage(2, payload)
+	: AgentMessage(AgentReadyToContestMessage::TypeId, payload)
 {
 
 }
 
 AgentReadyToContestMessage::AgentReadyToContestMessage()
-	: AgentMessage(2)
+	: AgentMessage(AgentReadyToContestMessage::TypeId)
 {
 
+}
+
+
+SendToDoctorMessage::SendToDoctorMessage(Payload payload)
+	: AgentMessage(SendToDoctorMessage::TypeId, payload)
+{
+	from_bytes(_managerId, _payload.begin() + 1);
+	from_bytes(_doctorId, _payload.begin() + 5);
+}
+
+SendToDoctorMessage::SendToDoctorMessage(const int managerId, const int doctorId)
+	: AgentMessage(SendToDoctorMessage::TypeId), _managerId(managerId), _doctorId(doctorId)
+{
+	joinVectors(_payload, to_bytes(managerId));
+	joinVectors(_payload, to_bytes(doctorId));
 }
 
 
