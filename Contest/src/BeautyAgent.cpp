@@ -14,7 +14,7 @@
 int BeautyAgent::MaxCandidatesCount = 10;
 
 BeautyAgent::BeautyAgent(const int id, const int managersCount)
-	:_id(id), _broker(id, managersCount)
+	:_id(id), _broker(id, managersCount), _managersCount(managersCount)
 {
 	_managersCandidatesCount = new int[managersCount];
 
@@ -26,6 +26,8 @@ BeautyAgent::BeautyAgent(const int id, const int managersCount)
 void BeautyAgent::run()
 {
 	prepare();
+
+	waitForAllManagersToBeReady();
 
 	_broker.stop();
 	_puller.join();
@@ -46,6 +48,21 @@ void BeautyAgent::prepare()
 	auto participationMessage = ParticipationMessage(_id, _managersCandidatesCount[_id]);
 	_broker.send(participationMessage);
 }
+
+void BeautyAgent::waitForAllManagersToBeReady()
+{
+	int i = _managersCount;
+
+	auto readyMessage = AgentReadyToContestMessage();
+	_broker.send(readyMessage);
+
+	while (--i)
+	{
+		_broker.receive<AgentReadyToContestMessage>();
+	}
+}
+
+
 
 
 

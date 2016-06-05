@@ -21,8 +21,37 @@ public:
 
 	void send(AgentMessage& agentMessage, const std::vector<int> &targets = _targetAll);
 
-	template <typename T>
-	auto receive() -> T;
+	template<typename T>
+	AgentMessagePtr receive()
+	{
+		const int typeId = T::getTypeId();
+
+		while (true)
+		{
+			{
+				//printf("Waiting for lock\n");
+				std::unique_lock<std::mutex> lk((*messagesPool)[typeId].queryLock);
+				//printf("Lock received\n");
+
+				if (!(*messagesPool)[typeId].query.empty())
+				{
+					printf("[Broker %i] There is message in the poll %i\n", _id, typeId);
+					AgentMessagePtr message = (*messagesPool)[typeId].query.back();
+					(*messagesPool)[typeId].query.pop_back();
+					printf("[Broker %i]  Message get\n", _id);
+					return message;
+				}
+
+				//printf("There is no messages in the poll\n");
+			}
+
+			{
+				std::unique_lock<std::mutex> lk((*messagesPool)[typeId].notifierLock);
+				//printf("Wait until\n");
+				(*messagesPool)[typeId].notifier.wait_for(lk, std::chrono::milliseconds(100));
+			}
+		}
+	}
 
 	void pullMessages();
 
@@ -30,7 +59,7 @@ public:
 
 private:
 
-	void query(AgentMessage& agentMessage);
+	void query(AgentMessagePtr agentMessage);
 
 	void updateLamportClock(const LamportClock& lamportClock);
 
@@ -43,15 +72,29 @@ private:
 
 	static std::vector<int> _targetAll;
 
-	struct MessageSource
+	class MessageSource
 	{
+	public:
+
+		MessageSource() :
+			query (std::vector<AgentMessagePtr>())
+		{
+
+		}
+
+		MessageSource(const MessageSource& source) :
+			query (source.query)
+		{
+
+		}
+
 		std::condition_variable notifier;
 		std::mutex notifierLock;
-		std::vector<AgentMessage> query;
+		std::vector<AgentMessagePtr> query;
 		std::mutex queryLock;
 	};
 
-	std::map<int, MessageSource> messagesPool;
+	std::map<int, MessageSource> *messagesPool;
 
 	bool* _running;
 };

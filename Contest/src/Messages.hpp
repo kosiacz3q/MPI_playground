@@ -8,6 +8,7 @@
 #include <vector>
 #include <cstddef>
 #include <cstdint>
+#include <memory>
 
 
 typedef std::vector<char> Payload;
@@ -18,7 +19,7 @@ class Message
 {
 public:
 
-	static void SetLamportClockSize(const uint32_t &n);
+	static void SetLamportClockSize(const uint32_t n);
 
 	Message(const Payload& payload);
 	Message(const LamportClock& lamportClock, const Payload& agentMessagePayload);
@@ -53,6 +54,12 @@ public:
 		_payload.push_back(_type);
 	}
 
+	AgentMessage(MessageType type, Payload& payload)
+			: _payload(payload), _type(type)
+	{
+
+	}
+
 	virtual ~AgentMessage() {}
 
 	MessageType getType() { return _type; } const
@@ -63,16 +70,15 @@ public:
 
 protected:
 
-	AgentMessage(const Payload& payload)
-			: _payload(payload), _type(payload[0])
-	{ }
-
 	Payload _payload;
 
 private:
 	MessageType _type;
 };
+//======================================================================================================================
 
+typedef std::shared_ptr<AgentMessage> AgentMessagePtr;
+//======================================================================================================================
 
 class ParticipationMessage : public AgentMessage
 {
@@ -84,14 +90,26 @@ public:
 	int getManagerId() { return _managerId; } const
 	int getCandidatesCount() { return _candidatesCount; } const
 
-	static constexpr int TypeId = 43;
+	static constexpr int TypeId = 1;
+	static int getTypeId() {return 1; }
 
 private:
 
 	int _managerId;
 	int _candidatesCount;
 };
+//======================================================================================================================
 
+class AgentReadyToContestMessage : public AgentMessage
+{
+public:
+
+	AgentReadyToContestMessage(Payload payload);
+	AgentReadyToContestMessage();
+
+	static constexpr int TypeId = 2;
+	static int getTypeId() {return 2; }
+};
 //======================================================================================================================
 
 #endif //CONTEST_MESSAGE_HPP

@@ -28,6 +28,8 @@ int main(int argc, char **argv)
 
 	try
 	{
+		Message::SetLamportClockSize(agentsCount);
+
 		BeautyAgent ba(agentId, agentsCount);
 
 		ba.run();

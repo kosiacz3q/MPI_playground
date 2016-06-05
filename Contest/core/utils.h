@@ -2,6 +2,9 @@
 #define UTILS_123232323233_HPP
 
 #include <cstring>
+#include <cstdio>
+#include <vector>
+#include <sstream>
 
 template<typename T>
 std::vector<char> to_bytes(const T& payload)
@@ -24,5 +27,18 @@ void joinVectors(std::vector<T>& target, std::vector<T> source)
 	target.insert(target.end(), source.begin(), source.end());
 }
 
+template <typename T>
+void printPayload(const std::vector<T>& payload)
+{
+	std::stringstream result;
+	result << "[";
+
+	for (const T c : payload)
+		result << (c + 1) << ", ";
+
+	result << "]";
+
+	printf("Payload = %s\n", result.str().c_str());
+}
 
 #endif

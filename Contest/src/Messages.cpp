@@ -8,7 +8,7 @@
 
 size_t Message::PlainMessagePayloadOffset = 0;
 
-void Message::SetLamportClockSize(const uint32_t &n)
+void Message::SetLamportClockSize(const uint32_t n)
 {
 	PlainMessagePayloadOffset = sizeof(int) * n;
 }
@@ -37,19 +37,31 @@ Message::Message(const LamportClock& lamportClock, const Payload& agentMessagePa
 	std::copy(agentMessagePayload.begin(), agentMessagePayload.end(), std::back_inserter(_payload));
 }
 
-
 ParticipationMessage::ParticipationMessage(Payload payload)
-	: AgentMessage(payload)
+	: AgentMessage(1, payload)
 {
 	from_bytes(_managerId, _payload.begin() + 1);
 	from_bytes(_candidatesCount, _payload.begin() + 5);
 }
 
 ParticipationMessage::ParticipationMessage(int managerId, int candidatesCount)
-	: AgentMessage(TypeId)
+	: AgentMessage(1)
 {
 	joinVectors(_payload, to_bytes(managerId));
 	joinVectors(_payload, to_bytes(candidatesCount));
+}
+
+
+AgentReadyToContestMessage::AgentReadyToContestMessage(Payload payload)
+	: AgentMessage(2, payload)
+{
+
+}
+
+AgentReadyToContestMessage::AgentReadyToContestMessage()
+	: AgentMessage(2)
+{
+
 }
 
 

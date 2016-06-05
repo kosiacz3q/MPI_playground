@@ -110,8 +110,8 @@ TEST_CASE( "get type from payload", "[agent message]" )
 TEST_CASE( "participation message from payload", "[agent message]" )
 {
 	const auto agentPayload = std::vector<char> {
-			43,
-			50, 0, 0 ,(char)64,
+			1,
+			50, 0, 0 ,64,
 			3, 0, 0, 0
 	};
 
@@ -127,10 +127,48 @@ TEST_CASE( "payload from participation message", "[agent message]" )
 	auto participationMessage = ParticipationMessage(1073741874, 3);
 
 	const auto expected = std::vector<char> {
-			43,
+			1,
 			50, 0, 0 ,(char)64,
 			3, 0, 0, 0
 	};
 
 	REQUIRE(participationMessage.getPayload() == expected);
+}
+
+TEST_CASE( "agent read for contest to payload", "[agent message]" )
+{
+	auto agentReadyForContestMessage = AgentReadyToContestMessage();
+
+	const auto expected = std::vector<char> {
+			2
+	};
+
+	REQUIRE(agentReadyForContestMessage.getPayload() == expected);
+}
+
+TEST_CASE( "agent read for contest from payload", "[agent message]" )
+{
+	const auto feed = std::vector<char> {
+			2
+	};
+
+	auto agentReadyForContestMessage = AgentReadyToContestMessage(feed);
+
+	REQUIRE(agentReadyForContestMessage.getType() == 2);
+}
+
+
+TEST_CASE( "Wrap and unwrap participation", "[wrapping]" )
+{
+	Message::SetLamportClockSize(3);
+	auto lamportClock = std::vector<int> {1,2,3};
+
+	auto participationMessage = ParticipationMessage(0, 3);
+
+	auto wrappedParticipation = Message(lamportClock, participationMessage.getPayload());
+
+	auto receivedMessage = Message(wrappedParticipation.getPayload());
+
+	REQUIRE(participationMessage.getPayload() == receivedMessage.getAgentMessageBody());
+	REQUIRE(AgentMessage::getTypeFromPayload(receivedMessage.getAgentMessageBody()) == 1);
 }

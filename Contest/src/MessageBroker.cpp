@@ -6,6 +6,7 @@
 
 #include <chrono>
 #include <thread>
+#include <utils.h>
 
 std::vector<int> MessageBroker::_targetAll = std::vector<int>();
 
@@ -17,6 +18,11 @@ MessageBroker::MessageBroker(const int id, const int agentsCount)
 			_targetAll.push_back(i);
 
 	*_running = true;
+
+	messagesPool = new std::map<int, MessageSource>();
+
+	messagesPool->insert({ 1, MessageSource() });
+	messagesPool->insert({ 2, MessageSource() });
 }
 
 Message MessageBroker::wrapWithMessage(AgentMessage &agentMessage)
@@ -30,44 +36,32 @@ void MessageBroker::send(AgentMessage &agentMessage, const std::vector<int> &tar
 {
 	auto message = wrapWithMessage(agentMessage);
 
+	printf("[Broker %i] sending message  %i\n", _id, agentMessage.getType());
+
 	for (const int target : targets)
 	{
 		MPI_Send( &message.getPayload()[0], message.getPayload().size(), MPI_BYTE, target, agentMessage.getType(), MPI_COMM_WORLD);
 	}
+
+	printf("[Broker %i] sending message  %i success\n", _id, agentMessage.getType());
 }
 
-template<typename T>
-auto MessageBroker::receive() -> T
+AgentMessagePtr resolveMessage(const int type, const Payload& payload, int id)
 {
-	while (true)
-	{
-		{
-			std::unique_lock<std::mutex> lk(messagesPool[T::TypeId].queryLock);
+	printf("[Broker %i] resolving %i\n",id, type);
 
-			if (!messagesPool[T::TypeId].query.empty())
-			{
-				T message = messagesPool[T::TypeId].query.back();
-				messagesPool[T::TypeId].query.pop_back();
-				return message;
-			}
-		}
-
-		{
-			std::unique_lock<std::mutex> lk(messagesPool[T::TypeId].notifierLock);
-			messagesPool[T::TypeId].notifier.wait_until(
-					lk,
-					std::chrono::system_clock::now() + std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::duration<float> (100)));
-		}
-	}
-}
-
-AgentMessage resolveMessage(const int type, const Payload& payload)
-{
 	switch (type)
 	{
-		case ParticipationMessage::TypeId :
-			return ParticipationMessage(payload);
+		case ParticipationMessage::TypeId:
+			return std::make_shared<ParticipationMessage>(payload);
+
+		case AgentReadyToContestMessage::TypeId:
+			return std::make_shared<AgentReadyToContestMessage>(payload);
 	}
+
+	printPayload(payload);
+	std::this_thread::sleep_for(std::chrono::milliseconds(100));
+	throw "uknown message type";
 }
 
 void MessageBroker::pullMessages()
@@ -84,17 +78,15 @@ void MessageBroker::pullMessages()
 
 		if (!isReady)
 		{
-			std::this_thread::sleep_for(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::duration<float> (100)));
+			std::this_thread::sleep_for(std::chrono::milliseconds(100));
 			//printf("No message\n");
 			continue;
 		}
 
-		printf("[Broker %i] received message\n", _id);
-
 		int messageSize;
 		MPI_Get_count(&status, MPI_BYTE, &messageSize);
 
-		printf("[Broker %i] message count %i\n", _id, messageSize);
+		printf("[Broker %i] received message size %i\n", _id, messageSize);
 
 		Payload buffer(messageSize);
 		MPI_Recv(&buffer[0], messageSize, MPI_BYTE, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
@@ -103,11 +95,10 @@ void MessageBroker::pullMessages()
 
 		updateLamportClock(receivedMessage.getLamportClock());
 
-		{
-			auto messageType = AgentMessage::getTypeFromPayload(receivedMessage.getAgentMessageBody());
-			std::unique_lock<std::mutex> lk(messagesPool[messageType].queryLock);
-			messagesPool[messageType].query.push_back(resolveMessage(messageType, receivedMessage.getAgentMessageBody()));
-		}
+		auto messageType = AgentMessage::getTypeFromPayload(receivedMessage.getAgentMessageBody());
+		query(resolveMessage(messageType, receivedMessage.getAgentMessageBody(), _id));
+
+		printf("[Broker %i] queried message type %i\n", _id, receivedMessage.getAgentMessageBody()[0]);
 	}
 
 	printf("[Broker %i] stops receiving messages\n", _id);
@@ -120,12 +111,19 @@ void MessageBroker::stop()
 
 MessageBroker::~MessageBroker()
 {
+	delete messagesPool;
 	printf("[Broker %i] destroyed\n", _id);
 }
 
-void MessageBroker::query(AgentMessage &)
+void MessageBroker::query(AgentMessagePtr agentMessage)
 {
+	std::unique_lock<std::mutex> ll((*messagesPool)[agentMessage->getType()].queryLock);
 
+	printf("[Broker %i] query mType %i\n", _id, agentMessage->getType());
+
+	(*messagesPool)[agentMessage->getType()].query.push_back(agentMessage);
+
+	printf("[Broker %i] query mType %i success\n", _id, agentMessage->getType());
 }
 
 void MessageBroker::updateLamportClock(const LamportClock &lamportClock)
