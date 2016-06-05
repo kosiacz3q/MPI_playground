@@ -23,26 +23,22 @@ public:
 
 private:
 
-
-
 	int _id;
+	MessageBroker _broker;
+	int _managersCount;
+	int _doctorsCount;
+	int _minInDoctorQueue;
+	int _saloonCapacity;
+
 	int* _managersCandidatesCount;
 	int* _queueToSaloon;
-
-	MessageBroker _broker;
+	std::thread _puller;
 
 	void prepare();
 
 	void checkInDoctor();
 
 	void waitForAllManagersToBeReady();
-
-	std::thread _puller;
-
-	int _managersCount;
-	int _doctorsCount;
-	int _minInDoctorQueue;
-	int _saloonCapacity;
 };
 
 

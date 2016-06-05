@@ -7,6 +7,7 @@
 
 #include <mpi.h>
 #include <map>
+#include <list>
 #include <condition_variable>
 
 #include "Messages.hpp"
@@ -36,13 +37,11 @@ public:
 				if (!(*messagesPool)[typeId].query.empty())
 				{
 					printf("[Broker %i] There is message in the poll %i\n", _id, typeId);
-					AgentMessagePtr message = (*messagesPool)[typeId].query.back();
-					(*messagesPool)[typeId].query.pop_back();
-					printf("[Broker %i]  Message get\n", _id);
+					AgentMessagePtr message = (*messagesPool)[typeId].query.front();
+					(*messagesPool)[typeId].query.pop_front();
+					printf("[Broker %i] Message get\n", _id);
 					return message;
 				}
-
-				//printf("There is no messages in the poll\n");
 			}
 
 			{
@@ -52,6 +51,8 @@ public:
 			}
 		}
 	}
+
+	void retract(AgentMessagePtr agentMessage);
 
 	void pullMessages();
 
@@ -77,7 +78,7 @@ private:
 	public:
 
 		MessageSource() :
-			query (std::vector<AgentMessagePtr>())
+			query (std::list<AgentMessagePtr>())
 		{
 
 		}
@@ -90,7 +91,7 @@ private:
 
 		std::condition_variable notifier;
 		std::mutex notifierLock;
-		std::vector<AgentMessagePtr> query;
+		std::list<AgentMessagePtr> query;
 		std::mutex queryLock;
 	};
 

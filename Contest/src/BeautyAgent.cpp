@@ -5,12 +5,14 @@
 #include "BeautyAgent.hpp"
 #include "MessageBroker.hpp"
 #include "Messages.hpp"
+
+
 #include <utils.h>
 #include <limits>
-
 #include <cstdio>
 #include <ctime>
 #include <cstdlib>
+#include <algorithm>
 
 
 int BeautyAgent::MaxCandidatesCount = 3;
@@ -51,6 +53,8 @@ void BeautyAgent::run()
 BeautyAgent::~BeautyAgent()
 {
 	delete [] _managersCandidatesCount;
+	delete [] _queueToSaloon;
+
 	printf("[Agent %i] is melting\n", _id);
 }
 
@@ -73,7 +77,7 @@ void BeautyAgent::prepare()
 		_managersCandidatesCount[agentData->getManagerId()] = agentData->getCandidatesCount();
 	}
 
-	printVector("candidates count",_managersCandidatesCount, _managersCandidatesCount + _managersCount - 1);
+	printVector("[Agent " + std::to_string(_id) + "] candidates count",_managersCandidatesCount, _managersCandidatesCount + _managersCount - 1);
 }
 
 void BeautyAgent::waitForAllManagersToBeReady()
@@ -91,6 +95,8 @@ void BeautyAgent::waitForAllManagersToBeReady()
 
 void BeautyAgent::checkInDoctor()
 {
+	int turn = 0;
+
 	int doctorsQueue[_doctorsCount];
 	std::vector<int> targets;
 
@@ -116,12 +122,28 @@ void BeautyAgent::checkInDoctor()
 		// receive chooses of others
 		int expectedResponsesCount = (int) targets.size();
 
+		printVector("[Agent " + std::to_string(_id) + "] targets turn [" + std::to_string(turn) + "]",&targets[0], &(targets[targets.size() - 1]));
+
 		while(expectedResponsesCount--)
 		{
-			auto response = std::dynamic_pointer_cast<SendToDoctorMessage>(_broker.receive<SendToDoctorMessage>());
+			while (!targets.empty())
+			{
+				auto response = std::dynamic_pointer_cast<SendToDoctorMessage>(_broker.receive<SendToDoctorMessage>());
 
-			if (doctorsQueue[response->getDoctorId()] > response->getManagerId())
-				doctorsQueue[response->getDoctorId()] = response->getManagerId();
+				printf("[Agent %i] received %i from %i turn [%i]\n", _id, response->getDoctorId(),
+					   response->getManagerId(), turn);
+
+				if (std::find(targets.begin(), targets.end(), response->getManagerId()) ==  targets.end())
+				{
+					_broker.retract(response);
+					continue;
+				}
+
+				if (doctorsQueue[response->getDoctorId()] > response->getManagerId())
+					doctorsQueue[response->getDoctorId()] = response->getManagerId();
+
+				targets.erase(std::find(targets.begin(), targets.end(), response->getManagerId()));
+			}
 		}
 
 		// perform doctor check
@@ -132,5 +154,7 @@ void BeautyAgent::checkInDoctor()
 					//TODO add some sleep
 					_queueToSaloon[managerInDoctor] = _minInDoctorQueue++;
 				}
+
+		printVector("[Agent " + std::to_string(_id) + "] current state turn [" + std::to_string(turn++) + "]", _managersCandidatesCount, _managersCandidatesCount + _managersCount - 1);
 	}
 }

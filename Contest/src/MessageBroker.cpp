@@ -140,6 +140,13 @@ void MessageBroker::updateLamportClock(const LamportClock &lamportClock)
 			_actualLamportClock[i] = lamportClock[i];
 }
 
+void MessageBroker::retract(AgentMessagePtr agentMessage)
+{
+	query(agentMessage);
+}
+
+
+
 
 
 
