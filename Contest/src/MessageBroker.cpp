@@ -27,6 +27,8 @@ MessageBroker::MessageBroker(const int id, const int agentsCount)
 	messagesPool->insert({ 3, MessageSource() });
 	messagesPool->insert({ 4, MessageSource() });
 	messagesPool->insert({ 5, MessageSource() });
+	messagesPool->insert({ 6, MessageSource() });
+	messagesPool->insert({ 7, MessageSource() });
 }
 
 Message MessageBroker::wrapWithMessage(AgentMessage &agentMessage)
