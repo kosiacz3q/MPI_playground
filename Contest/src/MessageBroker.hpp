@@ -64,7 +64,11 @@ public:
 
 	void stop();
 
+	static void setLogLamport(const bool log);
+
 private:
+
+	void log(const std::string& message);
 
 	void query(AgentMessagePtr agentMessage);
 
@@ -104,6 +108,7 @@ private:
 	std::map<int, MessageSource> *messagesPool;
 
 	bool* _running;
+	static bool lamportLoggingEnabled;
 };
 
 

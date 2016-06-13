@@ -1,15 +1,13 @@
-//
-// Created by lucas on 04.06.16.
-//
-
 #include "MessageBroker.hpp"
 
 #include <chrono>
 #include <thread>
 #include <utils.h>
 #include <stdexcept>
+#include <iostream>
 
 std::vector<int> MessageBroker::_targetAll = std::vector<int>();
+bool MessageBroker::lamportLoggingEnabled = false;
 
 MessageBroker::MessageBroker(const int id, const int agentsCount)
 	: _id(id), _actualLamportClock(LamportClock(agentsCount)), _running(new bool)
@@ -42,20 +40,16 @@ void MessageBroker::send(AgentMessage &agentMessage, const std::vector<int> &tar
 {
 	auto message = wrapWithMessage(agentMessage);
 
-	printf("[Broker %i] sending message  %i\n", _id, agentMessage.getType());
-
 	for (const int target : targets)
 	{
 		MPI_Send( &message.getPayload()[0], message.getPayload().size(), MPI_BYTE, target, agentMessage.getType(), MPI_COMM_WORLD);
 	}
 
-	printf("[Broker %i] sending message  %i success\n", _id, agentMessage.getType());
+	log("Send message of type " + std::to_string(agentMessage.getType()));
 }
 
 AgentMessagePtr resolveMessage(const int type, const Payload& payload, int id)
 {
-	printf("[Broker %i] resolving %i\n",id, type);
-
 	switch (type)
 	{
 		case ParticipationMessage::TypeId:
@@ -89,25 +83,21 @@ void MessageBroker::pullMessages()
 {
 	MPI_Status status;
 
-	printf("[Broker %i] starts receiving messages\n", _id);
+	log("Receiving messages");
 	int isReady;
 
 	while (*_running)
 	{
-
 		MPI_Iprobe(MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &isReady, &status);
 
 		if (!isReady)
 		{
 			std::this_thread::sleep_for(std::chrono::milliseconds(100));
-			//printf("No message\n");
 			continue;
 		}
 
 		int messageSize;
 		MPI_Get_count(&status, MPI_BYTE, &messageSize);
-
-		printf("[Broker %i] received message size %i\n", _id, messageSize);
 
 		Payload buffer(messageSize);
 		MPI_Recv(&buffer[0], messageSize, MPI_BYTE, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
@@ -119,10 +109,10 @@ void MessageBroker::pullMessages()
 		auto messageType = AgentMessage::getTypeFromPayload(receivedMessage.getAgentMessageBody());
 		query(resolveMessage(messageType, receivedMessage.getAgentMessageBody(), _id));
 
-		printf("[Broker %i] queried message type %i\n", _id, receivedMessage.getAgentMessageBody()[0]);
+		log("Message received with type" + std::to_string(receivedMessage.getAgentMessageBody()[0]));
 	}
 
-	printf("[Broker %i] stops receiving messages\n", _id);
+	log("End of receiving messages");
 }
 
 void MessageBroker::stop()
@@ -139,12 +129,7 @@ MessageBroker::~MessageBroker()
 void MessageBroker::query(AgentMessagePtr agentMessage)
 {
 	std::unique_lock<std::mutex> ll((*messagesPool)[agentMessage->getType()].queryLock);
-
-	printf("[Broker %i] query mType %i\n", _id, agentMessage->getType());
-
 	(*messagesPool)[agentMessage->getType()].query.push_back(agentMessage);
-
-	printf("[Broker %i] query mType %i success\n", _id, agentMessage->getType());
 }
 
 void MessageBroker::updateLamportClock(const LamportClock &lamportClock)
@@ -160,6 +145,34 @@ void MessageBroker::retract(AgentMessagePtr agentMessage)
 {
 	query(agentMessage);
 }
+
+void MessageBroker::log(const std::string &message)
+{
+	std::ostringstream stringStream;
+	stringStream << "[Broker " << _id << "] ";
+
+	stringStream << message;
+
+	if (lamportLoggingEnabled)
+	{
+		std::unique_lock<std::mutex> ll(_lamportClockMutex);
+		stringStream << " [";
+		for (int lc : _actualLamportClock)
+			stringStream << lc << ",";
+		stringStream << "]";
+	}
+
+	printf("%s\n", stringStream.str().c_str());
+}
+
+void MessageBroker::setLogLamport(const bool log)
+{
+	MessageBroker::lamportLoggingEnabled = log;
+}
+
+
+
+
 
 
 
