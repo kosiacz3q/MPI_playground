@@ -40,13 +40,20 @@ void BeautyAgent::run()
 {
 	prepare();
 
-	checkInDoctor();
+	if (_candidatesCount != 0)
+	{
+		checkInDoctor();
 
-	printf("[Agent %i] saloon ticket for saloon [%i]\n", _id, _queueToSaloon[_id]);
+		printf("[Agent %i] saloon ticket for saloon [%i]\n", _id, _queueToSaloon[_id]);
 
-	waitInDoctor();
+		waitInDoctor();
 
-	checkInSaloon();
+		checkInSaloon();
+	}
+	else
+	{
+		printf("[Agent %i] is not participating in current contest\n", _id);
+	}
 
 	waitForAllManagersToBeReady();
 
@@ -145,7 +152,7 @@ void BeautyAgent::checkInDoctor()
 
 		printVector("[Agent " + std::to_string(_id) + "] targets turn [" + std::to_string(turn) + "]",&targets[0], &(targets[targets.size() - 1]));
 
-		while(expectedResponsesCount--)
+		while(expectedResponsesCount-- > 0)
 		{
 			while (!targets.empty())
 			{
@@ -189,7 +196,7 @@ void BeautyAgent::waitInDoctor()
 		}
 
 		printf("[Agent %i] start of doctor visit\n", _id);
-		std::this_thread::sleep_for(std::chrono::milliseconds(6000));
+		std::this_thread::sleep_for(std::chrono::milliseconds(3000));
 		printf("[Agent %i] end of doctor visit\n", _id);
 
 		{
@@ -214,7 +221,7 @@ void BeautyAgent::checkInSaloon()
 			printf("[Agent %i] agent %i is before me\n", _id, i);
 			earlierInQueue.push_back(i);
 		}
-		else if (i != _id)
+		else if (i != _id && _managersCandidatesCount[i] > 0)
 			afterInQueue.push_back(i);
 
 	printf("[Agent %i] waiting for saloon\n", _id);
