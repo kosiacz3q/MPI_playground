@@ -10,7 +10,9 @@ std::vector<int> MessageBroker::_targetAll = std::vector<int>();
 bool MessageBroker::lamportLoggingEnabled = false;
 
 MessageBroker::MessageBroker(const int id, const int agentsCount)
-	: _id(id), _actualLamportClock(LamportClock(agentsCount)), _running(new bool)
+	: _id(id),
+	  _actualLamportClock(LamportClock(agentsCount)),
+	  _running(new bool)
 {
 	for (int i = 0; i < agentsCount; ++i)
 		if (i != id)
@@ -42,7 +44,11 @@ void MessageBroker::send(AgentMessage &agentMessage, const std::vector<int> &tar
 
 	for (const int target : targets)
 	{
-		MPI_Send( &message.getPayload()[0], message.getPayload().size(), MPI_BYTE, target, agentMessage.getType(), MPI_COMM_WORLD);
+		{
+			std::unique_lock<std::mutex> ll(_mpiMutex);
+			MPI_Send(&message.getPayload()[0], message.getPayload().size(), MPI_BYTE, target, agentMessage.getType(),
+					 MPI_COMM_WORLD);
+		}
 	}
 
 	log("Send message of type " + std::to_string(agentMessage.getType()));
@@ -88,7 +94,10 @@ void MessageBroker::pullMessages()
 
 	while (*_running)
 	{
-		MPI_Iprobe(MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &isReady, &status);
+		{
+			std::unique_lock<std::mutex> ll(_mpiMutex);
+			MPI_Iprobe(MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &isReady, &status);
+		}
 
 		if (!isReady)
 		{
@@ -96,12 +105,17 @@ void MessageBroker::pullMessages()
 			continue;
 		}
 
-		int messageSize;
-		MPI_Get_count(&status, MPI_BYTE, &messageSize);
 
-		Payload buffer(messageSize);
-		MPI_Recv(&buffer[0], messageSize, MPI_BYTE, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+		Payload buffer;
 
+		{
+			int messageSize;
+			std::unique_lock<std::mutex> ll(_mpiMutex);
+
+			MPI_Get_count(&status, MPI_BYTE, &messageSize);
+			buffer.resize(messageSize);
+			MPI_Recv(&buffer[0], messageSize, MPI_BYTE, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+		}
 		auto receivedMessage = Message(buffer);
 
 		updateLamportClock(receivedMessage.getLamportClock());
@@ -109,7 +123,7 @@ void MessageBroker::pullMessages()
 		auto messageType = AgentMessage::getTypeFromPayload(receivedMessage.getAgentMessageBody());
 		query(resolveMessage(messageType, receivedMessage.getAgentMessageBody(), _id));
 
-		log("Message received with type" + std::to_string(receivedMessage.getAgentMessageBody()[0]));
+		log("Message received with type " + std::to_string(receivedMessage.getAgentMessageBody()[0]));
 	}
 
 	log("End of receiving messages");

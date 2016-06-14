@@ -24,12 +24,19 @@ public:
 private:
 
 	int _id;
-	MessageBroker _broker;
+	std::shared_ptr<MessageBroker> _broker;
 	int _managersCount;
 	int _doctorsCount;
 	int _minInDoctorQueue;
 	int _saloonCapacity;
-	bool _doctorComplete;
+
+	enum PassingState
+	{
+		ACCEPT = 1,
+		REJECT = 2
+	};
+
+	std::shared_ptr<PassingState> _doctorComplete;
 	bool _running;
 
 	int* _managersCandidatesCount;
@@ -46,6 +53,8 @@ private:
 	void prepare();
 
 	void checkInDoctor();
+
+	void waitInDoctor();
 
 	void checkInSaloon();
 

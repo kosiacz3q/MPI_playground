@@ -1,7 +1,3 @@
-//
-// Created by lucas on 04.06.16.
-//
-
 #ifndef CONTEST_MESSAGEBROKER_HPP
 #define CONTEST_MESSAGEBROKER_HPP
 
@@ -30,16 +26,13 @@ public:
 		while (true)
 		{
 			{
-				//printf("Waiting for lock\n");
 				std::unique_lock<std::mutex> lk((*messagesPool)[typeId].queryLock);
-				//printf("Lock received\n");
 
 				if (!(*messagesPool)[typeId].query.empty())
 				{
-					printf("[Broker %i] There is message in the poll %i\n", _id, typeId);
 					AgentMessagePtr message = (*messagesPool)[typeId].query.front();
 					(*messagesPool)[typeId].query.pop_front();
-					printf("[Broker %i] Message get\n", _id);
+
 					return message;
 				}
 			}
@@ -109,6 +102,8 @@ private:
 
 	bool* _running;
 	static bool lamportLoggingEnabled;
+
+	std::mutex _mpiMutex;
 };
 
 
