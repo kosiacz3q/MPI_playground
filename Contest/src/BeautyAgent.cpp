@@ -13,7 +13,7 @@
 
 int BeautyAgent::MaxCandidatesCount = 3;
 
-BeautyAgent::BeautyAgent(const int id, const int managersCount, const int doctorsCount, const int saloonCapacity)
+BeautyAgent::BeautyAgent(const int id, const int managersCount, const int doctorsCount, const int saloonCapacity, const int contestRevision)
 	:_id(id),
 	 _managersCount(managersCount),
 	 _doctorsCount(doctorsCount),
@@ -21,7 +21,7 @@ BeautyAgent::BeautyAgent(const int id, const int managersCount, const int doctor
 	 _saloonCapacity(saloonCapacity),
 	 _running(true)
 {
-	_broker = std::make_shared<MessageBroker>(id, managersCount);
+	_broker = std::make_shared<MessageBroker>(id, managersCount, contestRevision);
 	_managersCandidatesCount = new int[managersCount];
 	_queueToSaloon = new int[managersCount];
 
@@ -107,6 +107,8 @@ void BeautyAgent::waitForAllManagersToBeReady()
 			std::this_thread::sleep_for(std::chrono::milliseconds(100));
 		}
 	}
+
+	printf("[Agent %i] End of waiting for others\n", _id);
 }
 
 void BeautyAgent::checkInDoctor()
@@ -212,13 +214,8 @@ void BeautyAgent::checkInSaloon()
 			printf("[Agent %i] agent %i is before me\n", _id, i);
 			earlierInQueue.push_back(i);
 		}
-		else if (_queueToSaloon[i] >= _queueToSaloon[_id])
-		{
-			if (i != _id)
-				afterInQueue.push_back(i);
-		}
-		else
-			exit(4);
+		else if (i != _id)
+			afterInQueue.push_back(i);
 
 	printf("[Agent %i] waiting for saloon\n", _id);
 
@@ -235,7 +232,7 @@ void BeautyAgent::checkInSaloon()
 				earlierInQueue.erase(sender);
 			}
 
-			printf("[Agent %i] Agent %i reserved [%i/%i]\n", _id, reservation->getManagerId(), _saloonCapacity, maxCapacity);
+			printf("[Agent %i] Another agent %i reserved [%i/%i]\n", _id, reservation->getManagerId(), _saloonCapacity, maxCapacity);
 		}
 
 		while (_broker->isAvailable<FreeSaloon>())
@@ -283,7 +280,7 @@ void BeautyAgent::checkInSaloon()
 	}
 
 	printf("[Agent %i] start of saloon visit [%i\\%i]\n", _id, _saloonCapacity, maxCapacity);
-	std::this_thread::sleep_for(std::chrono::milliseconds(std::rand() % 2000 + 300));
+	std::this_thread::sleep_for(std::chrono::milliseconds(std::rand() % 1000 + 300));
 	_saloonCapacity += _candidatesCount;
 	printf("[Agent %i] end of saloon visit [%i\\%i]\n", _id, _saloonCapacity, maxCapacity);
 
@@ -309,7 +306,7 @@ void BeautyAgent::passerLoop()
 			_broker->send(decisionMessage, {request->getManagerId()});
 
 			if (*_doctorComplete  == PassingState::ACCEPT)
-				_queueToSaloon[request->getManagerId()] = 0;
+				_queueToSaloon[request->getManagerId()] = -1;
 		}
 		else
 		{

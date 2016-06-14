@@ -8,15 +8,19 @@
 
 std::vector<int> MessageBroker::_targetAll = std::vector<int>();
 bool MessageBroker::lamportLoggingEnabled = false;
+LamportVectorClockPtr MessageBroker::lamportClock = nullptr;
 
-MessageBroker::MessageBroker(const int id, const int agentsCount)
+MessageBroker::MessageBroker(const int id, const int agentsCount, const int contestRevision)
 	: _id(id),
-	  _actualLamportClock(LamportClock(agentsCount)),
-	  _running(new bool)
+	  _running(new bool),
+	  _contestRevision(contestRevision)
 {
-	for (int i = 0; i < agentsCount; ++i)
-		if (i != id)
-			_targetAll.push_back(i);
+	if (_targetAll.empty())
+	{
+		for (int i = 0; i < agentsCount; ++i)
+			if (i != id)
+				_targetAll.push_back(i);
+	}
 
 	*_running = true;
 
@@ -33,9 +37,8 @@ MessageBroker::MessageBroker(const int id, const int agentsCount)
 
 Message MessageBroker::wrapWithMessage(AgentMessage &agentMessage)
 {
-	std::unique_lock<std::mutex> ll(_lamportClockMutex);
-	++_actualLamportClock[_id];
-	return Message(_actualLamportClock, agentMessage.getPayload());
+	lamportClock->update();
+	return Message(lamportClock->getCurrent(), agentMessage.getPayload());
 }
 
 void MessageBroker::send(AgentMessage &agentMessage, const std::vector<int> &targets)
@@ -46,7 +49,7 @@ void MessageBroker::send(AgentMessage &agentMessage, const std::vector<int> &tar
 	{
 		{
 			std::unique_lock<std::mutex> ll(_mpiMutex);
-			MPI_Send(&message.getPayload()[0], message.getPayload().size(), MPI_BYTE, target, agentMessage.getType(),
+			MPI_Send(&message.getPayload()[0], message.getPayload().size(), MPI_BYTE, target, _contestRevision,
 					 MPI_COMM_WORLD);
 		}
 	}
@@ -96,7 +99,7 @@ void MessageBroker::pullMessages()
 	{
 		{
 			std::unique_lock<std::mutex> ll(_mpiMutex);
-			MPI_Iprobe(MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &isReady, &status);
+			MPI_Iprobe(MPI_ANY_SOURCE, _contestRevision, MPI_COMM_WORLD, &isReady, &status);
 		}
 
 		if (!isReady)
@@ -114,11 +117,11 @@ void MessageBroker::pullMessages()
 
 			MPI_Get_count(&status, MPI_BYTE, &messageSize);
 			buffer.resize(messageSize);
-			MPI_Recv(&buffer[0], messageSize, MPI_BYTE, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+			MPI_Recv(&buffer[0], messageSize, MPI_BYTE, MPI_ANY_SOURCE, _contestRevision, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 		}
 		auto receivedMessage = Message(buffer);
 
-		updateLamportClock(receivedMessage.getLamportClock());
+		lamportClock->update(receivedMessage.getLamportClock());
 
 		auto messageType = AgentMessage::getTypeFromPayload(receivedMessage.getAgentMessageBody());
 		query(resolveMessage(messageType, receivedMessage.getAgentMessageBody(), _id));
@@ -146,15 +149,6 @@ void MessageBroker::query(AgentMessagePtr agentMessage)
 	(*messagesPool)[agentMessage->getType()].query.push_back(agentMessage);
 }
 
-void MessageBroker::updateLamportClock(const LamportClock &lamportClock)
-{
-	std::unique_lock<std::mutex> ll(_lamportClockMutex);
-
-	for (int i = 0; i < lamportClock.size(); ++i)
-		if (lamportClock[i] > _actualLamportClock[i])
-			_actualLamportClock[i] = lamportClock[i];
-}
-
 void MessageBroker::retract(AgentMessagePtr agentMessage)
 {
 	query(agentMessage);
@@ -168,13 +162,7 @@ void MessageBroker::log(const std::string &message)
 	stringStream << message;
 
 	if (lamportLoggingEnabled)
-	{
-		std::unique_lock<std::mutex> ll(_lamportClockMutex);
-		stringStream << " [";
-		for (int lc : _actualLamportClock)
-			stringStream << lc << ",";
-		stringStream << "]";
-	}
+		stringStream << *lamportClock;
 
 	printf("%s\n", stringStream.str().c_str());
 }

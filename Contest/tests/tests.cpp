@@ -122,6 +122,25 @@ TEST_CASE( "participation message from payload", "[agent message]" )
 	REQUIRE(participationMessage.getManagerId() == 1073741874);
 }
 
+TEST_CASE( "participation message from payload multpile", "[agent message]" )
+{
+	for (int i = 0; i < 100; ++i)
+	{
+		auto agentPayload = std::vector<char> {
+				1,
+				50, 0, 0, 64
+		};
+
+		joinVectors(agentPayload, to_bytes(i));
+
+		auto participationMessage = ParticipationMessage(agentPayload);
+
+		REQUIRE(participationMessage.getType() == ParticipationMessage::TypeId);
+		REQUIRE(participationMessage.getCandidatesCount() == i);
+		REQUIRE(participationMessage.getManagerId() == 1073741874);
+	}
+}
+
 TEST_CASE( "payload from participation message", "[agent message]" )
 {
 	auto participationMessage = ParticipationMessage(1073741874, 3);
@@ -170,7 +189,7 @@ TEST_CASE( "send candidate to doctor to payload", "[agent message]" )
 	REQUIRE(sendCandidateToDoctor.getPayload() == expected);
 }
 
-TEST_CASE( "send candidate to docotr from payload", "[agent message]" )
+TEST_CASE( "send candidate to doctor from payload", "[agent message]" )
 {
 	const auto feed = std::vector<char> {
 			3,

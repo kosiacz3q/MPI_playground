@@ -7,12 +7,13 @@
 #include <condition_variable>
 
 #include "Messages.hpp"
+#include "LamportVectorClock.hpp"
 
 class MessageBroker
 {
 public:
 
-	MessageBroker(const int id, const int agentsCount);
+	MessageBroker(const int id, const int agentsCount, const int contestRevision);
 
 	virtual ~MessageBroker();
 
@@ -59,20 +60,18 @@ public:
 
 	static void setLogLamport(const bool log);
 
+	static LamportVectorClockPtr lamportClock;
+
+
 private:
 
 	void log(const std::string& message);
 
 	void query(AgentMessagePtr agentMessage);
 
-	void updateLamportClock(const LamportClock& lamportClock);
-
 	Message wrapWithMessage(AgentMessage& agentMessage);
 
 	int _id;
-
-	std::mutex _lamportClockMutex;
-	LamportClock _actualLamportClock;
 
 	static std::vector<int> _targetAll;
 
@@ -104,6 +103,8 @@ private:
 	static bool lamportLoggingEnabled;
 
 	std::mutex _mpiMutex;
+
+	int _contestRevision;
 };
 
 

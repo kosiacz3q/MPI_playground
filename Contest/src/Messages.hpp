@@ -19,7 +19,7 @@ class Message
 {
 public:
 
-	static void SetLamportClockSize(const uint32_t n);
+	static void SetLamportClockSize(const int n);
 
 	Message(const Payload& payload);
 	Message(const LamportClock& lamportClock, const Payload& agentMessagePayload);

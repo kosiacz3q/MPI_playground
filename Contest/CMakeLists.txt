@@ -20,6 +20,7 @@ set(SOURCE_FILES
         src/Messages.cpp
         src/BeautyAgent.cpp
         src/MessageBroker.cpp
+        src/LamportVectorClock.cpp
         )
 
 add_executable(Contest ${SOURCE_FILES} src/main.cpp)

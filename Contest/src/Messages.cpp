@@ -8,7 +8,7 @@
 
 size_t Message::PlainMessagePayloadOffset = 0;
 
-void Message::SetLamportClockSize(const uint32_t n)
+void Message::SetLamportClockSize(const int n)
 {
 	PlainMessagePayloadOffset = sizeof(int) * n;
 }

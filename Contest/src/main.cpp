@@ -41,12 +41,22 @@ int main(int argc, char **argv)
 
 	Message::SetLamportClockSize(agentsCount);
 	MessageBroker::setLogLamport(argv[4][0] == '1');
-
+	MessageBroker::lamportClock = std::make_shared<LamportVectorClock>(agentsCount, agentId);
 	BeautyAgent::MaxCandidatesCount = std::stoi(argv[1]);
 
-	BeautyAgent ba(agentId, agentsCount, std::stoi(argv[2]), std::stoi(argv[3]));
 
-	ba.run();
+	unsigned int contestNumber = 0;
+	while((contestNumber = ++contestNumber % std::numeric_limits<unsigned int>::max()))
+	{
+		if (agentId == 0)
+			printf("====================================================================\n"
+				   "=======================NEW CONTEST STARTED==========================\n"
+				   "====================================================================\n");
+
+		BeautyAgent ba(agentId, agentsCount, std::stoi(argv[2]), std::stoi(argv[3]), contestNumber);
+
+		ba.run();
+	}
 
 	MPI_Finalize ();
 

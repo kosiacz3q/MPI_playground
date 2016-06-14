@@ -13,7 +13,7 @@ class BeautyAgent
 {
 public:
 
-	BeautyAgent(const int id, const int managersCount, const int doctorsCount, const int saloonCapacity);
+	BeautyAgent(const int id, const int managersCount, const int doctorsCount, const int saloonCapacity, const int contestRevision);
 
 	virtual ~BeautyAgent();
 
