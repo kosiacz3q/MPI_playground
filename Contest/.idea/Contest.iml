@@ -2,10 +2,12 @@
 <module type="CPP_MODULE" version="4">
   <component name="NewModuleRootManager">
     <content url="file://$MODULE_DIR$">
+      <sourceFolder url="file://$MODULE_DIR$/src/Logger.cpp" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/src/BeautyAgent.hpp" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/src/main.cpp" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/src/LamportVectorClock.cpp" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/src/Messages.cpp" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/src/Logger.hpp" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/src/MessageBroker.cpp" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/src/Messages.hpp" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/src/LamportVectorClock.hpp" isTestSource="false" />
