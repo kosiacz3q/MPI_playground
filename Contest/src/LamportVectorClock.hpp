@@ -17,6 +17,13 @@ public:
 
 	void update();
 
+	int getId() const
+	{
+		return _id;
+	}
+
+	std::string getForCurrentAgent();
+
 private:
 
 	std::vector<int> _clockVector;

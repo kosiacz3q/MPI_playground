@@ -33,16 +33,18 @@ void LamportVectorClock::update()
 	++_clockVector[_id];
 }
 
+std::string LamportVectorClock::getForCurrentAgent()
+{
+	std::unique_lock<std::mutex> ll(_clockMutex);
+	return std::to_string(_clockVector[_id]);
+}
+
+
 std::ostringstream &operator<<(std::ostringstream &os, LamportVectorClock &obj)
 {
 	auto _clockVector = obj.getCurrent();
 
-	os<< " [";
-
-	for (int lc : _clockVector)
-		os<< lc << ",";
-
-	os<< "]";
+	os<<" ["<<_clockVector[obj.getId()]<<"]";
 
 	return os;
 }

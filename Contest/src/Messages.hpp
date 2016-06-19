@@ -132,6 +132,27 @@ private:
 };
 //======================================================================================================================
 
+class DoctorsVisitEnds : public AgentMessage
+{
+public:
+
+	DoctorsVisitEnds(Payload payload);
+	DoctorsVisitEnds(const int managerId, int doctorId);
+
+	int getManagerId() { return _managerId; } const
+	int getDoctorId() { return  _doctorId; } const
+
+	static constexpr int TypeId = 8;
+	static int getTypeId() {return 8; }
+
+private:
+
+	int _managerId;
+	int _doctorId;
+};
+//======================================================================================================================
+
+
 class ReserveSaloon : public AgentMessage
 {
 public:

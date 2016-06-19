@@ -80,11 +80,28 @@ SendToDoctorMessage::SendToDoctorMessage(const int managerId, const int doctorId
 }
 
 
+
+DoctorsVisitEnds::DoctorsVisitEnds(Payload payload)
+	: AgentMessage(DoctorsVisitEnds::TypeId, payload)
+{
+	from_bytes(_managerId, _payload.begin() + 1);
+	from_bytes(_doctorId, _payload.begin() + 5);
+}
+
+
+DoctorsVisitEnds::DoctorsVisitEnds(const int managerId, int doctorId)
+	: AgentMessage(DoctorsVisitEnds::TypeId), _managerId(managerId), _doctorId(doctorId)
+{
+	joinVectors(_payload, to_bytes(managerId));
+	joinVectors(_payload, to_bytes(doctorId));
+}
+
 ReserveSaloon::ReserveSaloon(Payload payload)
 		: AgentMessage(ReserveSaloon::TypeId, payload)
 {
 	from_bytes(_managerId, _payload.begin() + 1);
 }
+
 
 ReserveSaloon::ReserveSaloon(const int managerId)
 		: AgentMessage(ReserveSaloon::TypeId), _managerId(managerId)
@@ -92,12 +109,12 @@ ReserveSaloon::ReserveSaloon(const int managerId)
 	joinVectors(_payload, to_bytes(managerId));
 }
 
-
 FreeSaloon::FreeSaloon(Payload payload)
 	: AgentMessage(FreeSaloon::TypeId, payload)
 {
 	from_bytes(_managerId, _payload.begin() + 1);
 }
+
 
 FreeSaloon::FreeSaloon(const int managerId)
 	: AgentMessage(FreeSaloon::TypeId), _managerId(managerId)
@@ -105,12 +122,12 @@ FreeSaloon::FreeSaloon(const int managerId)
 	joinVectors(_payload, to_bytes(managerId));
 }
 
-
 PassMeRequest::PassMeRequest(Payload payload)
 		: AgentMessage(PassMeRequest::TypeId, payload)
 {
 	from_bytes(_managerId, _payload.begin() + 1);
 }
+
 
 PassMeRequest::PassMeRequest(const int managerId)
 		: AgentMessage(PassMeRequest::TypeId), _managerId(managerId)
@@ -118,12 +135,12 @@ PassMeRequest::PassMeRequest(const int managerId)
 	joinVectors(_payload, to_bytes(managerId));
 }
 
-
 PassMeDecision::PassMeDecision(Payload payload)
 		: AgentMessage(PassMeDecision::TypeId, payload)
 {
 	from_bytes(_decision, _payload.begin() + 1);
 }
+
 
 PassMeDecision::PassMeDecision(const int decision)
 		: AgentMessage(PassMeDecision::TypeId), _decision(decision)

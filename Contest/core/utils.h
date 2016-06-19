@@ -42,17 +42,19 @@ void printVector(const std::vector<T>& vector)
 }
 
 template <typename T>
-void printVector(std::string prefix, const T* start, const T* end)
+std::string printVector(const T* start, const T* end)
 {
 	std::stringstream result;
-	result << prefix << "[";
+	result << "[" << *start;
+
+	++start;
 
 	for (; start <= end; ++start)
-		result << (*start) << ", ";
+		result << ", " << (*start);
 
 	result << "]";
 
-	printf("%s\n", result.str().c_str());
+	return result.str();
 }
 
 #endif

@@ -1,13 +1,7 @@
 #include "BeautyAgent.hpp"
-#include "MessageBroker.hpp"
-#include "Messages.hpp"
-
+#include "Logger.hpp"
 
 #include <utils.h>
-#include <limits>
-#include <cstdio>
-#include <ctime>
-#include <cstdlib>
 #include <algorithm>
 
 
@@ -28,12 +22,12 @@ BeautyAgent::BeautyAgent(const int id, const int managersCount, const int doctor
 	for (int i = 0; i < managersCount; ++i)
 		_queueToSaloon[i] = std::numeric_limits<int>::max();
 
-	_doctorComplete = std::make_shared<PassingState>(PassingState::REJECT);
+	_doctorComplete = std::make_shared<PassingState>(PassingState::ACCEPT);
 
 	_puller = std::thread(&MessageBroker::pullMessages, &*_broker);
 	_passer = std::thread(&BeautyAgent::passerLoop, this);
 
-	printf("[Agent %i] ready for action\n", id);
+	log("ready for action");
 }
 
 void BeautyAgent::run()
@@ -44,15 +38,11 @@ void BeautyAgent::run()
 	{
 		checkInDoctor();
 
-		printf("[Agent %i] saloon ticket for saloon [%i]\n", _id, _queueToSaloon[_id]);
-
-		waitInDoctor();
-
 		checkInSaloon();
 	}
 	else
 	{
-		printf("[Agent %i] is not participating in current contest\n", _id);
+		log("Is not participating in current contest edition");
 	}
 
 	waitForAllManagersToBeReady();
@@ -67,17 +57,15 @@ BeautyAgent::~BeautyAgent()
 {
 	delete [] _managersCandidatesCount;
 	delete [] _queueToSaloon;
-
-	printf("[Agent %i] is melting\n", _id);
 }
 
 void BeautyAgent::prepare()
 {
 	std::srand((unsigned int) (std::time(0) + _id));
 
-	_managersCandidatesCount[_id] = _candidatesCount = std::rand() % MaxCandidatesCount + 1;
+	_managersCandidatesCount[_id] = _candidatesCount = 1;//std::rand() % MaxCandidatesCount + 1;
 
-	printf("[Agent %i] choose to start with %i candidates\n", _id, _managersCandidatesCount[_id]);
+	log("Choosen counf of candidates is " + std::to_string( _managersCandidatesCount[_id]));
 
 	auto participationMessage = ParticipationMessage(_id, _managersCandidatesCount[_id]);
 	_broker->send(participationMessage);
@@ -90,7 +78,12 @@ void BeautyAgent::prepare()
 		_managersCandidatesCount[agentData->getManagerId()] = agentData->getCandidatesCount();
 	}
 
-	printVector("[Agent " + std::to_string(_id) + "] candidates count",_managersCandidatesCount, _managersCandidatesCount + _managersCount - 1);
+	if (_id == 0)
+		printf("====================================================================\n"
+			"=======================NEW CONTEST STARTED==========================\n"
+			"====================================================================\n");
+
+	log("Candidates count for all managers" + printVector(_managersCandidatesCount, _managersCandidatesCount + _managersCount - 1));
 }
 
 void BeautyAgent::waitForAllManagersToBeReady()
@@ -100,7 +93,7 @@ void BeautyAgent::waitForAllManagersToBeReady()
 	auto readyMessage = AgentReadyToContestMessage();
 	_broker->send(readyMessage);
 
-	printf("[Agent %i] Waiting for others\n", _id);
+	log("Waiting for others");
 
 	while (i)
 	{
@@ -115,116 +108,155 @@ void BeautyAgent::waitForAllManagersToBeReady()
 		}
 	}
 
-	printf("[Agent %i] End of waiting for others\n", _id);
+	log("End of waiting for others");
 }
 
 void BeautyAgent::checkInDoctor()
 {
-	int turn = 0;
-
 	int doctorsQueue[_doctorsCount];
-	std::vector<int> targets;
+	auto targetsToSend = std::vector<int>();
+	auto queueParticipants = std::vector<int>();
+	auto managersInDoctor = std::vector<int>();
 
 	int managerCandidatesPendingToDoctor[_managersCount];
 	memcpy(managerCandidatesPendingToDoctor, _managersCandidatesCount, _managersCount * sizeof(int));
 
 	while(managerCandidatesPendingToDoctor[_id])
 	{
+		if (!managersInDoctor.empty())
+			log("Waiting for visits to end");
+
+		while (!managersInDoctor.empty())
+		{
+			auto response = std::dynamic_pointer_cast<DoctorsVisitEnds>(_broker->receive<DoctorsVisitEnds>());
+			auto awaitedResponse = std::find(managersInDoctor.begin(), managersInDoctor.end(), response->getManagerId());
+
+			if (awaitedResponse ==  managersInDoctor.end())
+			{
+				_broker->retract(response);
+				std::this_thread::sleep_for(std::chrono::milliseconds(50));
+				continue;
+			}
+
+			managersInDoctor.erase(awaitedResponse);
+		}
+
+		log("Trying to reach doctor");
 		//clear queue
 		for (int i = 0; i < _doctorsCount; ++i)
 			doctorsQueue[i] = std::numeric_limits<int>::max();
 
 		// query other managers who have non checked candidates
-		targets.clear();
+		targetsToSend.clear();
 		for (int i = 0; i < _managersCount; ++i)
 			if (managerCandidatesPendingToDoctor[i] > 0 && i != _id)
-				targets.push_back(i);
+				targetsToSend.push_back(i);
+
+		queueParticipants = targetsToSend;
 
 		// send message with choosen doctor
 		int choosenDoctor = std::rand() % _doctorsCount;
 		auto sendToDoctorMessage = SendToDoctorMessage(_id, choosenDoctor);
 		doctorsQueue[choosenDoctor] = _id;
 
-		_broker->send(sendToDoctorMessage, targets);
+		_broker->send(sendToDoctorMessage, targetsToSend);
+
+		log("Choosen doctor is "+ std::to_string(choosenDoctor));
 
 		// receive chooses of others
-		int expectedResponsesCount = (int) targets.size();
-
-		printVector("[Agent " + std::to_string(_id) + "] targets turn [" + std::to_string(turn) + "]",&targets[0], &(targets[targets.size() - 1]));
+		int expectedResponsesCount = (int) targetsToSend.size();
 
 		while(expectedResponsesCount-- > 0)
 		{
-			while (!targets.empty())
+			while (!targetsToSend.empty())
 			{
 				auto response = std::dynamic_pointer_cast<SendToDoctorMessage>(_broker->receive<SendToDoctorMessage>());
 
-				printf("[Agent %i] received %i from %i turn [%i]\n", _id, response->getDoctorId(),
-					   response->getManagerId(), turn);
+				auto awaitedResponse = std::find(targetsToSend.begin(), targetsToSend.end(), response->getManagerId());
 
-				if (std::find(targets.begin(), targets.end(), response->getManagerId()) ==  targets.end())
+				if (awaitedResponse ==  targetsToSend.end())
 				{
 					_broker->retract(response);
+					std::this_thread::sleep_for(std::chrono::milliseconds(50));
 					continue;
 				}
 
 				if (doctorsQueue[response->getDoctorId()] > response->getManagerId())
 					doctorsQueue[response->getDoctorId()] = response->getManagerId();
 
-				targets.erase(std::find(targets.begin(), targets.end(), response->getManagerId()));
+				targetsToSend.erase(awaitedResponse);
 			}
 		}
+
+		log("Responses from ohers fetched");
 
 		// perform doctor check
 		for (const int managerInDoctor : doctorsQueue)
 			if (managerInDoctor != std::numeric_limits<int>::max())
-				if (--managerCandidatesPendingToDoctor[managerInDoctor] == 0)
+			{
+				if (--managerCandidatesPendingToDoctor[managerInDoctor] == 0 && _queueToSaloon[managerInDoctor] != -1)
 				{
 					_queueToSaloon[managerInDoctor] = _minInDoctorQueue++;
+
+					auto willNotParticipateNextTime = std::find(queueParticipants.begin(), queueParticipants.end(), managerInDoctor);
+					if (willNotParticipateNextTime != queueParticipants.end())
+						queueParticipants.erase(willNotParticipateNextTime);
 				}
 
-		printVector("[Agent " + std::to_string(_id) + "] current state turn [" + std::to_string(turn++) + "]", managerCandidatesPendingToDoctor, managerCandidatesPendingToDoctor + _managersCount - 1);
+				if (managerInDoctor != _id)
+					managersInDoctor.push_back(managerInDoctor);
+			}
+
+		if (doctorsQueue[choosenDoctor] == _id)
+		{
+			log("I manage to get to the doctor with number " + std::to_string(choosenDoctor));
+			waitInDoctor();
+			auto doctorsVisitEnds = DoctorsVisitEnds(_id, choosenDoctor);
+			log("Sending end visit to " + std::to_string(queueParticipants.size()) + " queue participants");
+			_broker->send(doctorsVisitEnds, queueParticipants);
+		}
+		else
+		{
+			log("I did not manage to get to the doctor with number " + std::to_string(choosenDoctor));
+		}
 	}
 }
 
 void BeautyAgent::waitInDoctor()
 {
-	if (_id == 0)
-	{
-		{
-			std::unique_lock<std::mutex> ll(_passingLock);
-			*_doctorComplete = PassingState::ACCEPT;
-		}
-
-		printf("[Agent %i] start of doctor visit\n", _id);
-		std::this_thread::sleep_for(std::chrono::milliseconds(3000));
-		printf("[Agent %i] end of doctor visit\n", _id);
-
-		{
-			std::unique_lock<std::mutex> ll(_passingLock);
-			*_doctorComplete = PassingState::REJECT;
-		}
-	}
+	int visitDuration = (std::rand() % 1000) + (_id == 0 ? 3000 : 0);
+	log("Visit in doctor started, estimated duration time is " + std::to_string(visitDuration));
+	std::this_thread::sleep_for(std::chrono::milliseconds(visitDuration));
+	log("Visit in doctor ended");
 }
 
 void BeautyAgent::checkInSaloon()
 {
+	{
+		std::unique_lock<std::mutex> ll(_passingLock);
+		*_doctorComplete = PassingState::REJECT;
+	}
+	log("No longer letting others ahead");
+
+	log("Number in saloon queue " + std::to_string(_queueToSaloon[_id]));
+
 	std::vector<int> earlierInQueue;
 	std::vector<int> afterInQueue;
 
-	int maxCapacity = _saloonCapacity;
+	_maxCapacity = _saloonCapacity;
 
-	printVector("[Agent " + std::to_string(_id) + "] local queue", _queueToSaloon, _queueToSaloon + _managersCount - 1);
+	log("Local queue" + printVector(_queueToSaloon, _queueToSaloon + _managersCount - 1));
 
 	for (int i = 0; i < _managersCount; ++i)
 		if (_queueToSaloon[i] < _queueToSaloon[_id])
 		{
-			printf("[Agent %i] agent %i is before me\n", _id, i);
+			log("Agent " + std::to_string(i) +" is before me");
 			earlierInQueue.push_back(i);
 		}
 		else if (i != _id && _managersCandidatesCount[i] > 0)
 			afterInQueue.push_back(i);
 
-	printf("[Agent %i] waiting for saloon\n", _id);
+	log("Waiting for saloon");
 
 	while(true)
 	{
@@ -239,31 +271,34 @@ void BeautyAgent::checkInSaloon()
 				earlierInQueue.erase(sender);
 			}
 
-			printf("[Agent %i] Another agent %i reserved [%i/%i]\n", _id, reservation->getManagerId(), _saloonCapacity, maxCapacity);
+			log("Agent " + std::to_string(reservation->getManagerId()) + " reserved "
+				"[" + std::to_string(_saloonCapacity) + "/ " + std::to_string(_maxCapacity) + "]");
 		}
 
 		while (_broker->isAvailable<FreeSaloon>())
 		{
 			auto reservation = std::dynamic_pointer_cast<FreeSaloon>(_broker->receive<FreeSaloon>());
 			_saloonCapacity += _managersCandidatesCount[reservation->getManagerId()];
-			printf("[Agent %i] Agent %i free [%i/%i]\n", _id, reservation->getManagerId(), _saloonCapacity, maxCapacity);
+
+			log("Agent " + std::to_string(reservation->getManagerId()) + " free "
+					"[" + std::to_string(_saloonCapacity) + "/ " + std::to_string(_maxCapacity) + "]");
 		}
 
 		for (const int earlier : earlierInQueue)
 		{
-			printf("[Agent %i] Asking if %i let us pass\n", _id, earlier);
+			log("Asking if " + std::to_string(earlier) + " let us pass");
 			auto passMeRequest = PassMeRequest(_id);
 			_broker->send(passMeRequest, { earlier });
 			auto request = std::dynamic_pointer_cast<PassMeDecision>(_broker->receive<PassMeDecision>());
 
 			if (request->getDecision() == (int)PassingState::REJECT)
 			{
-				printf("[Agent %i] Agent %i refused passing [%i]\n", _id, earlier, request->getDecision());
+				log("Agent " + std::to_string(earlier)  + " refused passing");
 				_saloonCapacity -= _managersCandidatesCount[earlier];
 			}
 			else
 			{
-				printf("[Agent %i] Agent %i lets us go before him\n", _id, earlier);
+				log("Agent " + std::to_string(earlier)  + " lets us go before him");
 				afterInQueue.push_back(earlier);
 			}
 		}
@@ -272,27 +307,26 @@ void BeautyAgent::checkInSaloon()
 
 		if (_saloonCapacity >= _candidatesCount)
 		{
-			printf("[Agent %i] Reservation [%i\\%i]\n", _id, _saloonCapacity, maxCapacity);
 			auto reservation = ReserveSaloon(_id);
-
 			_saloonCapacity -= _candidatesCount;
+			log("Reserving place in saloon [" + std::to_string(_saloonCapacity)  + "/" + std::to_string(_maxCapacity) + "]");
 			_broker->send(reservation, afterInQueue);
 
-			break;
+			waitInSaloon();
+
+			_saloonCapacity += _candidatesCount;
+			log("Freeing place in saloon [" + std::to_string(_saloonCapacity)  + "/" + std::to_string(_maxCapacity) + "]");
+
+			auto freeSaloon = FreeSaloon(_id);
+			_broker->send(freeSaloon, afterInQueue);
+
+			return;
 		}
 		else
 		{
 			std::this_thread::sleep_for(std::chrono::milliseconds(100));
 		}
 	}
-
-	printf("[Agent %i] start of saloon visit [%i\\%i]\n", _id, _saloonCapacity, maxCapacity);
-	std::this_thread::sleep_for(std::chrono::milliseconds(std::rand() % 1000 + 300));
-	_saloonCapacity += _candidatesCount;
-	printf("[Agent %i] end of saloon visit [%i\\%i]\n", _id, _saloonCapacity, maxCapacity);
-
-	auto freeSaloon = FreeSaloon(_id);
-	_broker->send(freeSaloon, afterInQueue);
 }
 
 void BeautyAgent::passerLoop()
@@ -301,19 +335,23 @@ void BeautyAgent::passerLoop()
 	{
 		if (_broker->isAvailable<PassMeRequest>())
 		{
-			std::unique_lock<std::mutex> ll(_passingLock);
-
 			auto request = std::dynamic_pointer_cast<PassMeRequest>(_broker->receive<PassMeRequest>());
 
-			printf("[Agent %i] pass decision for %i %s\n",
-				   _id, request->getManagerId(), (*_doctorComplete == PassingState::ACCEPT ? "Accept\0" : "Reject\0"));
+			{
+				std::unique_lock<std::mutex> ll(_passingLock);
+
+				if (*_doctorComplete == PassingState::ACCEPT)
+				{
+					_queueToSaloon[request->getManagerId()] = -1;
+				}
+			}
+
+			log("Pass decision for " + std::to_string(request->getManagerId()) + " is " +
+				(*_doctorComplete == PassingState::ACCEPT ? "Accept\0" : "Reject\0"));
 
 			auto decisionMessage = PassMeDecision(*_doctorComplete);
 
 			_broker->send(decisionMessage, {request->getManagerId()});
-
-			if (*_doctorComplete  == PassingState::ACCEPT)
-				_queueToSaloon[request->getManagerId()] = -1;
 		}
 		else
 		{
@@ -321,5 +359,25 @@ void BeautyAgent::passerLoop()
 		}
 	}
 }
+
+void BeautyAgent::log(const std::string &message)
+{
+	static std::string whoami = "Agent " + std::to_string(_id);
+
+	Logger::log(whoami, message);
+}
+
+void BeautyAgent::waitInSaloon()
+{
+	int visitDuration = (std::rand() % 2000);
+
+	log("Start of saloon visit [" + std::to_string(_saloonCapacity)  + "/" + std::to_string(_maxCapacity) + "] estimated duration time is " + std::to_string(visitDuration));
+	std::this_thread::sleep_for(std::chrono::milliseconds(visitDuration));
+	log("End of saloon visit [" + std::to_string(_saloonCapacity)  + "/" + std::to_string(_maxCapacity) + "]");
+}
+
+
+
+
 
 

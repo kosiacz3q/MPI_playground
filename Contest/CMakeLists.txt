@@ -21,6 +21,7 @@ set(SOURCE_FILES
         src/BeautyAgent.cpp
         src/MessageBroker.cpp
         src/LamportVectorClock.cpp
+        src/Logger.cpp
         )
 
 add_executable(Contest ${SOURCE_FILES} src/main.cpp)
